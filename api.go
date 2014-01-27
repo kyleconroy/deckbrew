@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"github.com/codegangsta/martini"
-    "github.com/codegangsta/martini-contrib/gzip"
+	"github.com/codegangsta/martini-contrib/gzip"
 	"io/ioutil"
-    "net/http"
 	"log"
+	"net/http"
 )
 
 // Import this eventually
@@ -27,6 +27,15 @@ type Card struct {
 	Editions       []Edition `json:"editions"`
 }
 
+func (c Card) Match(query Query) bool {
+	for _, t := range c.Types {
+		if query.Types[t] {
+			return true
+		}
+	}
+	return false
+}
+
 type Edition struct {
 	Set          string   `json:"set"`
 	Watermark    string   `json:"watermark,omitempty"`
@@ -38,28 +47,27 @@ type Edition struct {
 }
 
 func JSON(code int, val interface{}) (int, []byte) {
-        blob, err := json.Marshal(val)
+	blob, err := json.Marshal(val)
 
-        if err != nil {
-                return 500, []byte("INTERNAL SERVER ERROR")
-        }
+	if err != nil {
+		return 500, []byte("INTERNAL SERVER ERROR")
+	}
 
-        return code, blob
+	return code, blob
 }
 
-func GetCards(db *Database) (int, []byte) {
-        return JSON(http.StatusOK, db.FetchCards(100, 0))
+func GetCards(db *Database, req *http.Request) (int, []byte) {
+	return JSON(http.StatusOK, db.FetchCards(NewQuery(req)))
 }
 
 func GetCard(db *Database, params martini.Params) (int, []byte) {
-    card, err := db.FetchCard(params["id"])
+	card, err := db.FetchCard(params["id"])
 
-    if err != nil {
-        log.Println(err)
-	    return JSON(http.StatusNotFound, "")
-    }
+	if err != nil {
+		return JSON(http.StatusNotFound, "")
+	}
 
-    return JSON(http.StatusOK, card)
+	return JSON(http.StatusOK, card)
 }
 
 func GetCardEditions(db *Database, params martini.Params) string {
@@ -94,10 +102,10 @@ func main() {
 	// Setup middleware
 	m.Use(martini.Recovery())
 	m.Use(martini.Logger())
-    m.Use(gzip.All())
-    m.Use(func(c martini.Context, w http.ResponseWriter) {
-        w.Header().Set("Content-Type", "application/json; charset=utf-8")
-    })
+	m.Use(gzip.All())
+	m.Use(func(c martini.Context, w http.ResponseWriter) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	})
 
 	r := martini.NewRouter()
 
