@@ -27,13 +27,8 @@ type Card struct {
 	Editions       []Edition `json:"editions"`
 }
 
-func (c Card) Match(query Query) bool {
-	for _, t := range c.Types {
-		if query.Types[t] {
-			return true
-		}
-	}
-	return false
+type Deckbox struct {
+	Cards []Card `json:"cards"`
 }
 
 type Edition struct {
@@ -83,19 +78,30 @@ func GetEdition(db *Database, params martini.Params) string {
 }
 
 func main() {
+	db, err := NewConnection("")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	blob, err := ioutil.ReadFile("cards.json")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var db Database
-
-	err = json.Unmarshal(blob, &db)
+	var box Deckbox
+	err = json.Unmarshal(blob, &box)
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	//err = db.Load(box.Cards)
+
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
 	m := martini.New()
 
