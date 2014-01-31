@@ -1,14 +1,23 @@
 CREATE TABLE cards (
     id                varchar(32) primary key,
-    name              varchar(200),
-    mana_cost         varchar(40),
-    toughness         varchar(6),
-    power             varchar(6),
-    partner_card      varchar(32) references cards(id),
-    types             varchar(20)[],
-    subtypes          varchar(40)[],
-    color_indicator   varchar(10)[],
-    rules_text        text,
-    loyalty           smallint default 0,
-    converted_cost    smallint default 0
+    name              varchar(200) DEFAULT '',
+    mana_cost         varchar(40) DEFAULT '',
+    toughness         varchar(6) DEFAULT '',
+    power             varchar(6) DEFAULT '',
+    types             varchar(20)[] DEFAULT ARRAY[]::varchar[],
+    subtypes          varchar(40)[] DEFAULT ARRAY[]::varchar[],
+    supertypes        varchar(40)[] DEFAULT ARRAY[]::varchar[], 
+    colors            varchar(40)[] DEFAULT ARRAY[]::varchar[],
+    rules             text DEFAULT '',
+    loyalty           smallint DEFAULT 0,
+    cmc               smallint DEFAULT 0
+);
+
+CREATE INDEX cards_name_index ON cards(name);
+
+CREATE TABLE sets (
+    id                varchar(3) primary key,
+    name              varchar(200) DEFAULT '',
+    border            varchar(40) DEFAULT '',
+    type              varchar(32) DEFAULT ''
 );

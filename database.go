@@ -1,9 +1,11 @@
 package main
 
 import (
-	"database/sql"
+	"crypto/md5"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"io"
 	"net/http"
 )
 
@@ -14,20 +16,31 @@ type Query struct {
 }
 
 type Database struct {
-	conn *sql.DB
+	conn *sqlx.DB
 }
 
+func (db *Database) FetchCards(q Query) ([]Card, error) {
+    cards := []Card{}
+    err := db.conn.Select(&cards, "SELECT name, id FROM cards ORDER BY name ASC LIMIT 100")
+
+    if err != nil {
+        return cards, err
+    }
+
+	return cards, nil
+}
+
+
 func (db *Database) FetchCard(id string) (Card, error) {
-	var name string
-	err := db.conn.QueryRow("SELECT name FROM cards WHERE id=$1", id).Scan(&name)
-	switch {
-	case err == sql.ErrNoRows:
-		return Card{}, fmt.Errorf("No card with ID %s could be found", id)
-	case err != nil:
-		return Card{}, err
-	default:
-		return Card{Name: name, Id: id}, nil
-	}
+    var card Card
+
+	err := db.conn.Get(&card, "SELECT name, id FROM cards WHERE id=$1", id)
+
+    if err != nil {
+		return card, err
+    }
+
+    return card, nil
 }
 
 func NewQuery(req *http.Request) Query {
@@ -46,8 +59,8 @@ func NewQuery(req *http.Request) Query {
 	return q
 }
 
-func NewConnection(url string) (Database, error) {
-	conn, err := sql.Open("postgres", "postgres://localhost/deckbrew?sslmode=disable")
+func Open(url string) (Database, error) {
+	conn, err := sqlx.Open("postgres", url)
 
 	if err != nil {
 		return Database{}, err
@@ -56,12 +69,36 @@ func NewConnection(url string) (Database, error) {
 	return Database{conn: conn}, nil
 }
 
-func (db *Database) FetchCards(q Query) []Card {
-	return []Card{}
+func makeId(c MTGCard) string {
+	h := md5.New()
+	io.WriteString(h, c.Name+c.ManaCost)
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func TransformCard(c MTGCard) Card {
+	return Card{Name: c.Name, Id: makeId(c)}
+}
+
+func TransformCollection(collection MTGCollection) []Card {
+	cards := []Card{}
+	ids := map[string]Card{}
+	for _, set := range collection {
+		for _, card := range set.Cards {
+			newcard := TransformCard(card)
+
+			if _, found := ids[newcard.Id]; !found {
+			    ids[newcard.Id] = newcard
+			    cards = append(cards, newcard)
+			}
+
+		}
+
+	}
+	return cards
 }
 
 // Given an array of cards, load them into the database
-func (db *Database) Load(cards []Card) error {
+func (db *Database) Load(collection MTGCollection) error {
 	tx, err := db.conn.Begin()
 
 	if err != nil {
@@ -75,7 +112,7 @@ func (db *Database) Load(cards []Card) error {
 		return err
 	}
 
-	for _, card := range cards {
+	for _, card := range TransformCollection(collection) {
 		// Not sure how to handle failure here
 		_, err = stmt.Exec(card.Id, card.Name)
 

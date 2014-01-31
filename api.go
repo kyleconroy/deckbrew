@@ -2,33 +2,28 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"github.com/codegangsta/martini"
 	"github.com/codegangsta/martini-contrib/gzip"
-	"io/ioutil"
 	"log"
 	"net/http"
 )
 
 // Import this eventually
 type Card struct {
-	Name           string    `json:"name"`
-	Id             string    `json:"id"`
-	Types          []string  `json:"types"`
-	Subtypes       []string  `json:"subtypes,omitempty"`
-	ConvertedCost  int       `json:"converted_cost"`
-	ManaCost       string    `json:"mana_cost"`
-	Special        string    `json:"special,omitempty"` //'flip', 'double-faced', 'split'
-	PartnerCard    string    `json:"partner_card,omitempty"`
-	RulesText      []string  `json:"rules_text"`
-	ColorIndicator []string  `json:"color_indicator,omitempty"`
-	Power          string    `json:"power,omitempty"`
-	Toughness      string    `json:"toughness,omitempty"`
-	Loyalty        int       `json:"loyalty,omitempty"`
-	Editions       []Edition `json:"editions"`
-}
-
-type Deckbox struct {
-	Cards []Card `json:"cards"`
+	Name          string    `json:"name" db:"name"`
+	Id            string    `json:"id" db:"id"`
+	//Types         []string  `json:"types,omitempty" db:"types"`
+	//Supertypes    []string  `json:"supertypes,omitempty" db:"supertypes"`
+	//Subtypes      []string  `json:"subtypes,omitempty" db:"subtypes"`
+	//ConvertedCost int8       `json:"cmc" db:"cmc"`
+	//ManaCost      string    `json:"cost" db:"mana_cost"`
+	//Text          string    `json:"text" db:"rules"`
+	//Colors        []string  `json:"colors,omitempty" db:"colors"`
+	//Power         string    `json:"power,omitempty" db:"power"`
+	//Toughness     string    `json:"toughness,omitempty" db:"toughness"`
+	//Loyalty       int8      `json:"loyalty,omitempty" db:"loyalty"`
+	//Editions      []Edition `json:"editions,omitempty"`
 }
 
 type Edition struct {
@@ -37,8 +32,8 @@ type Edition struct {
 	Rarity       string   `json:"rarity"`
 	Artist       string   `json:"artist"`
 	MultiverseId int      `json:"multiverse_id"`
-	FlavorText   []string `json:"flavor_text,omitempty"`
-	Number       string   `json:"number,omitempty"`
+	Flavor       []string `json:"flavor,omitempty"`
+	Number       string   `json:"number"`
 }
 
 func JSON(code int, val interface{}) (int, []byte) {
@@ -52,13 +47,22 @@ func JSON(code int, val interface{}) (int, []byte) {
 }
 
 func GetCards(db *Database, req *http.Request) (int, []byte) {
-	return JSON(http.StatusOK, db.FetchCards(NewQuery(req)))
+    cards, err := db.FetchCards(NewQuery(req))
+
+	if err != nil {
+        log.Println(err)
+		return JSON(http.StatusNotFound, "")
+	}
+
+
+	return JSON(http.StatusOK, cards)
 }
 
 func GetCard(db *Database, params martini.Params) (int, []byte) {
 	card, err := db.FetchCard(params["id"])
 
 	if err != nil {
+        log.Println(err)
 		return JSON(http.StatusNotFound, "")
 	}
 
@@ -78,30 +82,29 @@ func GetEdition(db *Database, params martini.Params) string {
 }
 
 func main() {
-	db, err := NewConnection("")
+	flag.Parse()
+	db, err := Open("postgres://localhost/deckbrew?sslmode=disable")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	blob, err := ioutil.ReadFile("cards.json")
+	if flag.Arg(0) == "load" {
+		collection, err := LoadCollection(flag.Arg(1))
 
-	if err != nil {
-		log.Fatal(err)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = db.Load(collection)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println("Loaded all data into the database")
+		return
 	}
-
-	var box Deckbox
-	err = json.Unmarshal(blob, &box)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//err = db.Load(box.Cards)
-
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
 
 	m := martini.New()
 
