@@ -7,21 +7,45 @@ import (
 	"github.com/codegangsta/martini-contrib/gzip"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // Import this eventually
 type Card struct {
-	Name          string    `json:"name" db:"name"`
-	Id            string    `json:"id" db:"id"`
-	Type          string    `json:"type" db:"type"`
-	ConvertedCost int       `json:"cmc" db:"cmc"`
-	ManaCost      string    `json:"cost" db:"mana_cost"`
-	Text          string    `json:"text" db:"rules"`
-	Color        string    `json:"colors,omitempty" db:"color"`
-	Power         string    `json:"power,omitempty" db:"power"`
-	Toughness     string    `json:"toughness,omitempty" db:"toughness"`
-	Loyalty       int       `json:"loyalty,omitempty" db:"loyalty"`
-	Editions      []Edition `json:"editions,omitempty"`
+	Name             string    `json:"name" db:"name"`
+	Id               string    `json:"id" db:"id"`
+    JoinedTypes      string    `json:"-" db:"types"`
+    JoinedSupertypes string    `json:"-" db:"supertypes"`
+    JoinedSubtypes   string    `json:"-" db:"subtypes"`
+    JoinedColors     string    `json:"-" db:"colors"`
+    Types            []string  `json:"types,omitempty" db:"-"`
+    Supertypes       []string  `json:"supertypes,omitempty" db:"-"`
+    Subtypes         []string  `json:"subtypes,omitempty" db:"-"`
+    Colors           []string  `json:"colors,omitempty" db:"-"`
+	ConvertedCost    int       `json:"cmc" db:"cmc"`
+	ManaCost         string    `json:"cost" db:"mana_cost"`
+	Text             string    `json:"text" db:"rules"`
+	Power            string    `json:"power,omitempty" db:"power"`
+	Toughness        string    `json:"toughness,omitempty" db:"toughness"`
+	Loyalty          int       `json:"loyalty,omitempty" db:"loyalty"`
+	Href             string    `json:"url,omitempty"`
+	Editions         []Edition `json:"editions,omitempty"`
+}
+
+func explode(types string) []string {
+        if types == "" {
+                return []string{}
+        } else {
+                return strings.Split(types, ",")
+        }
+}
+
+func (c *Card) Fill() {
+	c.Href = "http://localhost:3000/cards/" + c.Id
+	c.Types = explode(c.JoinedTypes)
+	c.Supertypes = explode(c.JoinedSupertypes)
+	c.Subtypes = explode(c.JoinedSubtypes)
+	c.Colors = explode(c.JoinedColors)
 }
 
 type Edition struct {
@@ -45,7 +69,7 @@ func JSON(code int, val interface{}) (int, []byte) {
 }
 
 func GetCards(db *Database, req *http.Request) (int, []byte) {
-        q, err := NewQuery(req)
+	q, err := NewQuery(req)
 
 	if err != nil {
 		log.Println(err)

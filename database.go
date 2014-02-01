@@ -2,12 +2,12 @@ package main
 
 import (
 	"crypto/md5"
-    "strconv"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -23,10 +23,14 @@ type Database struct {
 
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
-	err := db.conn.Select(&cards, "SELECT id, name, rules, cmc, mana_cost, power, toughness, loyalty, type, color FROM cards ORDER BY name ASC LIMIT 100 OFFSET $1", q.Page * 100)
+	err := db.conn.Select(&cards, "SELECT id, name, rules, cmc, mana_cost, power, toughness, loyalty, types, subtypes, supertypes, colors FROM cards ORDER BY name ASC LIMIT 100 OFFSET $1", q.Page*100)
 
 	if err != nil {
 		return cards, err
+	}
+
+	for i, _ := range cards {
+		cards[i].Fill()
 	}
 
 	return cards, nil
@@ -35,30 +39,32 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 func (db *Database) FetchCard(id string) (Card, error) {
 	var card Card
 
-	err := db.conn.Get(&card, "SELECT name, id, cmc, mana_cost FROM cards WHERE id=$1", id)
+	err := db.conn.Get(&card, "SELECT name, id, cmc, mana_cost, power, toughness, loyalty, types, subtypes, supertypes, colors, rules FROM cards WHERE id=$1", id)
 
 	if err != nil {
 		return card, err
 	}
+
+    card.Fill()
 
 	return card, nil
 }
 
 func NewQuery(req *http.Request) (Query, error) {
 	q := Query{}
-    pagenum := req.URL.Query().Get("page")
+	pagenum := req.URL.Query().Get("page")
 
-    if pagenum == "" {
-            pagenum = "0"
-    }
+	if pagenum == "" {
+		pagenum = "0"
+	}
 
-    page, err := strconv.Atoi(pagenum)
+	page, err := strconv.Atoi(pagenum)
 
-    if err != nil {
-            return q, err
-    }
+	if err != nil {
+		return q, err
+	}
 
-    q.Page = page
+	q.Page = page
 
 	return q, nil
 }
@@ -79,18 +85,24 @@ func makeId(c MTGCard) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
+func join(things []string) string {
+	return strings.ToLower(strings.Join(things, ","))
+}
+
 func TransformCard(c MTGCard) Card {
 	return Card{
-		Name:          c.Name,
-		Id:            makeId(c),
-		Text:          c.Text,
-		Color:         strings.Join(c.Colors, ","),
-		Power:         c.Power,
-		Toughness:     c.Toughness,
-		Loyalty:       c.Loyalty,
-		Type:          c.Type,
-		ManaCost:      c.ManaCost,
-		ConvertedCost: int(c.ConvertedCost),
+		Name:             c.Name,
+		Id:               makeId(c),
+		Text:             c.Text,
+		JoinedColors:     join(c.Colors),
+		JoinedTypes:      join(c.Types),
+		JoinedSupertypes: join(c.Supertypes),
+		JoinedSubtypes:   join(c.Subtypes),
+		Power:            c.Power,
+		Toughness:        c.Toughness,
+		Loyalty:          c.Loyalty,
+		ManaCost:         c.ManaCost,
+		ConvertedCost:    int(c.ConvertedCost),
 	}
 }
 
@@ -118,7 +130,7 @@ func (db *Database) Load(collection MTGCollection) error {
 
 	for _, card := range TransformCollection(collection) {
 		// Not sure how to handle failure here
-		_, err := tx.NamedExec("INSERT INTO cards (id, name, cmc, mana_cost, rules, loyalty, power, toughness, type, color) VALUES (:id, :name, :cmc, :mana_cost, :rules, :loyalty, :power, :toughness, :type, :color)", &card)
+        _, err := tx.NamedExec("INSERT INTO cards (id, name, cmc, mana_cost, rules, loyalty, power, toughness, types, supertypes, subtypes, colors) VALUES (:id, :name, :cmc, :mana_cost, :rules, :loyalty, :power, :toughness, :types, :supertypes, :subtypes, :colors)", &card)
 
 		if err != nil {
 			tx.Rollback()
