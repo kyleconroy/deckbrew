@@ -63,6 +63,7 @@ end
 template "deckcache-defaults" do
   path "/etc/default/varnish"
   source "deckbrew-cache.conf.erb"
+  mode 0755
 end
 
 service "deckapi" do
