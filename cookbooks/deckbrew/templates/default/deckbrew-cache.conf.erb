@@ -1,0 +1,13 @@
+description "varnish cache"
+ 
+start on runlevel [2345]
+stop on shutdown
+ 
+limit nofile 131072 131072
+limit memlock 82000 82000
+
+expect fork
+ 
+exec /usr/local/sbin/varnishd -f /usr/local/etc/varnish/default.vcl -s malloc,1GB -T 127.0.0.1:2000
+ 
+respawn

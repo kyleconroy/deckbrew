@@ -11,8 +11,8 @@ import (
 
 // Import this eventually
 type Card struct {
-	Name          string    `json:"name" db:"name"`
-	Id            string    `json:"id" db:"id"`
+	Name string `json:"name" db:"name"`
+	Id   string `json:"id" db:"id"`
 	//Types         []string  `json:"types,omitempty" db:"types"`
 	//Supertypes    []string  `json:"supertypes,omitempty" db:"supertypes"`
 	//Subtypes      []string  `json:"subtypes,omitempty" db:"subtypes"`
@@ -47,13 +47,12 @@ func JSON(code int, val interface{}) (int, []byte) {
 }
 
 func GetCards(db *Database, req *http.Request) (int, []byte) {
-    cards, err := db.FetchCards(NewQuery(req))
+	cards, err := db.FetchCards(NewQuery(req))
 
 	if err != nil {
-        log.Println(err)
+		log.Println(err)
 		return JSON(http.StatusNotFound, "")
 	}
-
 
 	return JSON(http.StatusOK, cards)
 }
@@ -62,7 +61,7 @@ func GetCard(db *Database, params martini.Params) (int, []byte) {
 	card, err := db.FetchCard(params["id"])
 
 	if err != nil {
-        log.Println(err)
+		log.Println(err)
 		return JSON(http.StatusNotFound, "")
 	}
 
@@ -83,7 +82,8 @@ func GetEdition(db *Database, params martini.Params) string {
 
 func main() {
 	flag.Parse()
-	db, err := Open("postgres://localhost/deckbrew?sslmode=disable")
+
+	db, err := Open("postgres://urza:power9@localhost/deckbrew?sslmode=disable")
 
 	if err != nil {
 		log.Fatal(err)

@@ -21,3 +21,7 @@ CREATE TABLE sets (
     border            varchar(40) DEFAULT '',
     type              varchar(32) DEFAULT ''
 );
+
+GRANT ALL PRIVILEGES ON TABLE cards TO urza;
+GRANT ALL PRIVILEGES ON TABLE sets TO urza;
+

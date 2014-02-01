@@ -20,27 +20,26 @@ type Database struct {
 }
 
 func (db *Database) FetchCards(q Query) ([]Card, error) {
-    cards := []Card{}
-    err := db.conn.Select(&cards, "SELECT name, id FROM cards ORDER BY name ASC LIMIT 100")
+	cards := []Card{}
+	err := db.conn.Select(&cards, "SELECT name, id FROM cards ORDER BY name ASC LIMIT 100")
 
-    if err != nil {
-        return cards, err
-    }
+	if err != nil {
+		return cards, err
+	}
 
 	return cards, nil
 }
 
-
 func (db *Database) FetchCard(id string) (Card, error) {
-    var card Card
+	var card Card
 
 	err := db.conn.Get(&card, "SELECT name, id FROM cards WHERE id=$1", id)
 
-    if err != nil {
+	if err != nil {
 		return card, err
-    }
+	}
 
-    return card, nil
+	return card, nil
 }
 
 func NewQuery(req *http.Request) Query {
@@ -87,8 +86,8 @@ func TransformCollection(collection MTGCollection) []Card {
 			newcard := TransformCard(card)
 
 			if _, found := ids[newcard.Id]; !found {
-			    ids[newcard.Id] = newcard
-			    cards = append(cards, newcard)
+				ids[newcard.Id] = newcard
+				cards = append(cards, newcard)
 			}
 
 		}

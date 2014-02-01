@@ -1,0 +1,2 @@
+depends 'apt'
+depends 'tar'
