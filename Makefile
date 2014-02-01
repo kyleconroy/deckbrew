@@ -20,7 +20,7 @@ syncdb: cards.json
 	-dropuser urza
 	psql -a -f schema/database.sql
 	psql -d deckbrew -a -f schema/brew.sql
-	go run api.go database.go mtgjson.go load cards.json
+	go run mtgjson.go database.go api.go load cards.json
 
 ami: deckbrew
 	packer build template.json

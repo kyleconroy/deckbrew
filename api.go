@@ -13,27 +13,25 @@ import (
 type Card struct {
 	Name          string    `json:"name" db:"name"`
 	Id            string    `json:"id" db:"id"`
-	Types         []string  `json:"types,omitempty" db:"types"`
-	Supertypes    []string  `json:"supertypes,omitempty" db:"supertypes"`
-	Subtypes      []string  `json:"subtypes,omitempty" db:"subtypes"`
-	ConvertedCost int8      `json:"cmc" db:"cmc"`
+	Type          string    `json:"type" db:"type"`
+	ConvertedCost int       `json:"cmc" db:"cmc"`
 	ManaCost      string    `json:"cost" db:"mana_cost"`
 	Text          string    `json:"text" db:"rules"`
-	Colors        []string  `json:"colors,omitempty" db:"colors"`
+	Color        string    `json:"colors,omitempty" db:"color"`
 	Power         string    `json:"power,omitempty" db:"power"`
 	Toughness     string    `json:"toughness,omitempty" db:"toughness"`
-	Loyalty       int8      `json:"loyalty,omitempty" db:"loyalty"`
+	Loyalty       int       `json:"loyalty,omitempty" db:"loyalty"`
 	Editions      []Edition `json:"editions,omitempty"`
 }
 
 type Edition struct {
-	Set          string   `json:"set"`
-	Watermark    string   `json:"watermark,omitempty"`
-	Rarity       string   `json:"rarity"`
-	Artist       string   `json:"artist"`
-	MultiverseId int      `json:"multiverse_id"`
-	Flavor       []string `json:"flavor,omitempty"`
-	Number       string   `json:"number"`
+	Set          string `json:"set"`
+	Watermark    string `json:"watermark,omitempty"`
+	Rarity       string `json:"rarity"`
+	Artist       string `json:"artist"`
+	MultiverseId int    `json:"multiverse_id"`
+	Flavor       string `json:"flavor,omitempty"`
+	Number       string `json:"number"`
 }
 
 func JSON(code int, val interface{}) (int, []byte) {
@@ -47,7 +45,14 @@ func JSON(code int, val interface{}) (int, []byte) {
 }
 
 func GetCards(db *Database, req *http.Request) (int, []byte) {
-	cards, err := db.FetchCards(NewQuery(req))
+        q, err := NewQuery(req)
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusBadRequest, "")
+	}
+
+	cards, err := db.FetchCards(q)
 
 	if err != nil {
 		log.Println(err)
