@@ -37,18 +37,18 @@ directory 'gopath'
 
 # Build the binary
 execute 'make deps' do
-  cwd '/home/ubuntu/deckbrew'
+  cwd '/usr/local/deckbrew'
   environment (GO)
 end
 
 execute 'make' do
-  cwd '/home/ubuntu/deckbrew'
+  cwd '/usr/local/deckbrew'
   environment (GO)
 end
 
 # Create the database
 execute 'make syncdb' do
-  cwd '/home/ubuntu/deckbrew'
+  cwd '/usr/local/deckbrew'
   user 'postgres'
   environment (GO)
 end

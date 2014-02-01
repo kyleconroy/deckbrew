@@ -11,13 +11,21 @@
   ],
   "provisioners": [
     {
+      "type": "shell",
+      "inline": [
+        "mkdir -p /usr/local/deckbrew",
+        "chmod -R 777 /usr/local/deckbrew"
+      ]
+    },
+    {
       "type": "file",
-      "source": "deckbrew",
-      "destination": "/home/ubuntu"
+      "source": "deckbrew/",
+      "destination": "/usr/local/deckbrew"
     },
     {
       "type": "chef-solo",
-      "cookbook_paths": ["cookbooks"]
+      "cookbook_paths": ["cookbooks"],
+      "run_list": ["deckbrew::database"]
     }
   ]
 }
