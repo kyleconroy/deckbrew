@@ -108,9 +108,6 @@ func GetCard(db *Database, params martini.Params) (int, []byte) {
 	return JSON(http.StatusOK, card)
 }
 
-func GetCardEditions(db *Database, params martini.Params) string {
-	return "Hello world!"
-}
 
 func GetEditions(db *Database) string {
 	return "Hello world!"
@@ -161,8 +158,6 @@ func main() {
 
 	r.Get("/cards", GetCards)
 	r.Get("/cards/:id", GetCard)
-	r.Get("/cards/:id/editions", GetCardEditions)
-	r.Get("/editions", GetEditions)
 	r.Get("/editions/:id", GetEdition)
 
 	m.Action(r.Handle)

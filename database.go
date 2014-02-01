@@ -23,7 +23,7 @@ type Database struct {
 
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
-	err := db.conn.Select(&cards, "SELECT id, name, rules, cmc, mana_cost, power, toughness, loyalty, types, subtypes, supertypes, colors FROM cards ORDER BY name ASC LIMIT 100 OFFSET $1", q.Page*100)
+	err := db.conn.Select(&cards, "SELECT * FROM cards ORDER BY name ASC LIMIT 100 OFFSET $1", q.Page*100)
 
 	if err != nil {
 		return cards, err
@@ -32,7 +32,7 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 	for i, _ := range cards {
 		cards[i].Fill()
 
-		err = db.conn.Select(&cards[i].Editions, "SELECT id, card_id, magicset, watermark, rarity, border, artist, flavor, magicnumber, layout FROM editions WHERE card_id=$1 ORDER BY id ASC", cards[i].Id)
+		err = db.conn.Select(&cards[i].Editions, "SELECT * FROM editions WHERE card_id=$1 ORDER BY id ASC", cards[i].Id)
 
 		if err != nil {
 			continue
@@ -50,7 +50,7 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 func (db *Database) FetchCard(id string) (Card, error) {
 	var card Card
 
-	err := db.conn.Get(&card, "SELECT name, id, cmc, mana_cost, power, toughness, loyalty, types, subtypes, supertypes, colors, rules FROM cards WHERE id=$1", id)
+	err := db.conn.Get(&card, "SELECT * FROM cards WHERE id=$1", id)
 
 	if err != nil {
 		return card, err
