@@ -1,9 +1,9 @@
-.PHONY: deps server test syncdb serverdb
+.PHONY: deps server test syncdb serverdb ami
 
 DATABASE_URL := postgres://localhost/deckbrew?sslmode=disable
 
-deckbrew: api.go mtgjson.go database.go
-	go build -o deckbrew
+brewapi: api.go mtgjson.go database.go
+	go build -o brewapi
 
 deps:
 	go get -d -v ./...
@@ -21,6 +21,16 @@ syncdb: cards.json
 	psql -a -f schema/database.sql
 	psql -d deckbrew -a -f schema/brew.sql
 	go run api.go database.go mtgjson.go load cards.json
+
+ami: deckbrew
+	packer build template.json
+
+deckbrew: Makefile *.go schema/*.sql
+	mkdir -p deckbrew
+	cp *.go deckbrew
+	cp -r schema deckbrew
+	cp Makefile deckbrew
+
 
 cards.json:
 	wget http://mtgjson.com/json/AllSets-x.json.zip

@@ -37,25 +37,25 @@ directory 'gopath'
 
 # Build the binary
 execute 'make deps' do
-  cwd '/usr/local/deckbrew'
+  cwd '/home/ubuntu/deckbrew'
   environment (GO)
 end
 
 execute 'make' do
-  cwd '/usr/local/deckbrew'
+  cwd '/home/ubuntu/deckbrew'
   environment (GO)
 end
 
 # Create the database
 execute 'make syncdb' do
-  cwd "/usr/local/deckbrew"
+  cwd '/home/ubuntu/deckbrew'
   user 'postgres'
   environment (GO)
 end
 
 # Upstart
 template "deckapi" do
-  path "/etc/init/deckapi"
+  path "/etc/init/deckapi.conf"
   source "deckbrew-api.conf.erb"
 end
 
