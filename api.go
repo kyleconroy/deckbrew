@@ -114,6 +114,7 @@ func main() {
 	m.Use(gzip.All())
 	m.Use(func(c martini.Context, w http.ResponseWriter) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "public,max-age=3600")
 	})
 
 	r := martini.NewRouter()

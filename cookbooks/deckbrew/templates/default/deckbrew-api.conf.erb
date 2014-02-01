@@ -1,5 +1,7 @@
 description "DeckBrew API"
 
-cwd /usr/local/deckbrew
-exec ./deckbrew
+script
+        chdir /usr/local/deckbrew
+        exec ./deckbrew
+end script
 

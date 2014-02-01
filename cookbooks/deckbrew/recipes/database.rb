@@ -22,48 +22,53 @@ tar_extract 'https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz' do
   creates '/usr/local/go/bin'
 end
 
-template "go" do
-  path "/etc/profile.d/go.sh"
-  source "goprofile.erb"
-  owner "root"
-  group "root"
-  mode "0755"
+
+template "varnish" do
+  path "/etc/varnish/default.vcl"
+  source "default.vcl.erb"
 end
+
+GO = {
+  "PATH" => "#{ENV['PATH']}:/usr/local/go/bin",
+  "GOPATH" => "/usr/local/gopath",
+}
 
 directory 'gopath'
 
 # Build the binary
 execute 'make deps' do
   cwd '/usr/local/deckbrew'
+  environment (GO)
 end
 
 execute 'make' do
   cwd '/usr/local/deckbrew'
+  environment (GO)
 end
 
 # Create the database
 execute 'make syncdb' do
   cwd "/usr/local/deckbrew"
   user 'postgres'
+  environment (GO)
 end
 
 # Upstart
-template "deckbrew-api.conf" do
-  path "/etc/init/deckbrew-api.conf"
+template "deckapi" do
+  path "/etc/init/deckapi"
   source "deckbrew-api.conf.erb"
 end
 
-template "deckbrew-cache.conf" do
-  path "/etc/init/deckbrew-cache.conf"
+template "deckcache-defaults" do
+  path "/etc/default/varnish"
   source "deckbrew-cache.conf.erb"
 end
 
-service "deckbrew-api" do
+service "deckapi" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]
 end
 
-service "deckbrew-cache" do
-  provider Chef::Provider::Service::Upstart
+service "varnish" do
   action [:enable, :start]
 end

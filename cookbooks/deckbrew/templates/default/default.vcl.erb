@@ -9,3 +9,14 @@ backend default {
     .host = "127.0.0.1";
     .port = "3000";
 }
+
+sub vcl_recv {
+    unset req.http.Cache-Control;
+    unset req.http.Cookie;
+    return(lookup);
+}
+
+sub vcl_fetch {
+    set beresp.ttl = 100d;
+    return(deliver);
+}
