@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/codegangsta/martini"
 	"github.com/codegangsta/martini-contrib/gzip"
 	"log"
@@ -14,14 +15,14 @@ import (
 type Card struct {
 	Name             string    `json:"name" db:"name"`
 	Id               string    `json:"id" db:"id"`
-    JoinedTypes      string    `json:"-" db:"types"`
-    JoinedSupertypes string    `json:"-" db:"supertypes"`
-    JoinedSubtypes   string    `json:"-" db:"subtypes"`
-    JoinedColors     string    `json:"-" db:"colors"`
-    Types            []string  `json:"types,omitempty" db:"-"`
-    Supertypes       []string  `json:"supertypes,omitempty" db:"-"`
-    Subtypes         []string  `json:"subtypes,omitempty" db:"-"`
-    Colors           []string  `json:"colors,omitempty" db:"-"`
+	JoinedTypes      string    `json:"-" db:"types"`
+	JoinedSupertypes string    `json:"-" db:"supertypes"`
+	JoinedSubtypes   string    `json:"-" db:"subtypes"`
+	JoinedColors     string    `json:"-" db:"colors"`
+	Types            []string  `json:"types,omitempty" db:"-"`
+	Supertypes       []string  `json:"supertypes,omitempty" db:"-"`
+	Subtypes         []string  `json:"subtypes,omitempty" db:"-"`
+	Colors           []string  `json:"colors,omitempty" db:"-"`
 	ConvertedCost    int       `json:"cmc" db:"cmc"`
 	ManaCost         string    `json:"cost" db:"mana_cost"`
 	Text             string    `json:"text" db:"rules"`
@@ -33,11 +34,11 @@ type Card struct {
 }
 
 func explode(types string) []string {
-        if types == "" {
-                return []string{}
-        } else {
-                return strings.Split(types, ",")
-        }
+	if types == "" {
+		return []string{}
+	} else {
+		return strings.Split(types, ",")
+	}
 }
 
 func (c *Card) Fill() {
@@ -49,13 +50,23 @@ func (c *Card) Fill() {
 }
 
 type Edition struct {
-	Set          string `json:"set"`
+	Set          string `json:"-" db:"magicset"`
+	CardId       string `json:"-" db:"card_id"`
 	Watermark    string `json:"watermark,omitempty"`
 	Rarity       string `json:"rarity"`
+	Border       string `json:"-"`
 	Artist       string `json:"artist"`
-	MultiverseId int    `json:"multiverse_id"`
+	MultiverseId int    `json:"multiverse_id" db:"id"`
 	Flavor       string `json:"flavor,omitempty"`
-	Number       string `json:"number"`
+	Number       string `json:"number" db:"magicnumber"`
+	Layout       string `json:"layout"`
+	Href         string `json:"url,omitempty" db:"-"`
+	ImageUrl     string `json:"image_url,omitempty" db:"-"`
+}
+
+func (e *Edition) Fill() {
+	e.Href = fmt.Sprintf("http://localhost:3000/editions/%d", e.MultiverseId)
+	e.ImageUrl = fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", e.MultiverseId)
 }
 
 func JSON(code int, val interface{}) (int, []byte) {

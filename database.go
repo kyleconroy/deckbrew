@@ -31,6 +31,17 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 
 	for i, _ := range cards {
 		cards[i].Fill()
+
+		err = db.conn.Select(&cards[i].Editions, "SELECT id, card_id, magicset, watermark, rarity, border, artist, flavor, magicnumber, layout FROM editions WHERE card_id=$1 ORDER BY id ASC", cards[i].Id)
+
+		if err != nil {
+			continue
+		}
+
+		for j, _ := range cards[i].Editions {
+			cards[i].Editions[j].Fill()
+		}
+
 	}
 
 	return cards, nil
@@ -45,7 +56,7 @@ func (db *Database) FetchCard(id string) (Card, error) {
 		return card, err
 	}
 
-    card.Fill()
+	card.Fill()
 
 	return card, nil
 }
@@ -89,6 +100,21 @@ func join(things []string) string {
 	return strings.ToLower(strings.Join(things, ","))
 }
 
+func TransformEdition(c MTGCard) Edition {
+	return Edition{
+		Set:          c.Set,
+		Flavor:       c.Flavor,
+		MultiverseId: c.MultiverseId,
+		Watermark:    c.Watermark,
+		Rarity:       c.Rarity,
+		Artist:       c.Artist,
+		Border:       c.Border,
+		Layout:       c.Layout,
+		Number:       c.Number,
+		CardId:       makeId(c),
+	}
+}
+
 func TransformCard(c MTGCard) Card {
 	return Card{
 		Name:             c.Name,
@@ -106,31 +132,47 @@ func TransformCard(c MTGCard) Card {
 	}
 }
 
-func TransformCollection(collection MTGCollection) []Card {
+func TransformCollection(collection MTGCollection) ([]Card, []Edition) {
 	cards := []Card{}
 	ids := map[string]Card{}
+	editions := []Edition{}
+
 	for _, set := range collection {
 		for _, card := range set.Cards {
 			newcard := TransformCard(card)
+			newedition := TransformEdition(card)
 
 			if _, found := ids[newcard.Id]; !found {
 				ids[newcard.Id] = newcard
 				cards = append(cards, newcard)
 			}
 
+			editions = append(editions, newedition)
 		}
-
 	}
-	return cards
+	return cards, editions
 }
 
 // Given an array of cards, load them into the database
 func (db *Database) Load(collection MTGCollection) error {
 	tx := db.conn.MustBegin()
 
-	for _, card := range TransformCollection(collection) {
+	cards, editions := TransformCollection(collection)
+
+	for _, card := range cards {
 		// Not sure how to handle failure here
-        _, err := tx.NamedExec("INSERT INTO cards (id, name, cmc, mana_cost, rules, loyalty, power, toughness, types, supertypes, subtypes, colors) VALUES (:id, :name, :cmc, :mana_cost, :rules, :loyalty, :power, :toughness, :types, :supertypes, :subtypes, :colors)", &card)
+		_, err := tx.NamedExec("INSERT INTO cards (id, name, cmc, mana_cost, rules, loyalty, power, toughness, types, supertypes, subtypes, colors) VALUES (:id, :name, :cmc, :mana_cost, :rules, :loyalty, :power, :toughness, :types, :supertypes, :subtypes, :colors)", &card)
+
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+	}
+
+	for _, edition := range editions {
+		// Not sure how to handle failure here
+		_, err := tx.NamedExec("INSERT INTO editions (id, card_id, magicset, watermark, rarity, border, artist, flavor, magicnumber, layout) VALUES (:id, :card_id, :magicset, :watermark, :rarity, :border, :artist, :flavor, :magicnumber, :layout)", &edition)
 
 		if err != nil {
 			tx.Rollback()
