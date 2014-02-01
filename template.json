@@ -12,6 +12,7 @@
   "provisioners": [
     {
       "type": "shell",
+      "execute_command": "{{ .Vars }} sudo sh '{{ .Path }}'",
       "inline": [
         "mkdir -p /usr/local/deckbrew",
         "chmod -R 777 /usr/local/deckbrew"

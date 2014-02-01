@@ -1,6 +1,5 @@
 package main
 
-
 import (
 	"encoding/json"
 	"flag"
@@ -12,19 +11,19 @@ import (
 
 // Import this eventually
 type Card struct {
-	Name string `json:"name" db:"name"`
-	Id   string `json:"id" db:"id"`
-	//Types         []string  `json:"types,omitempty" db:"types"`
-	//Supertypes    []string  `json:"supertypes,omitempty" db:"supertypes"`
-	//Subtypes      []string  `json:"subtypes,omitempty" db:"subtypes"`
-	//ConvertedCost int8       `json:"cmc" db:"cmc"`
-	//ManaCost      string    `json:"cost" db:"mana_cost"`
-	//Text          string    `json:"text" db:"rules"`
-	//Colors        []string  `json:"colors,omitempty" db:"colors"`
-	//Power         string    `json:"power,omitempty" db:"power"`
-	//Toughness     string    `json:"toughness,omitempty" db:"toughness"`
-	//Loyalty       int8      `json:"loyalty,omitempty" db:"loyalty"`
-	//Editions      []Edition `json:"editions,omitempty"`
+	Name          string    `json:"name" db:"name"`
+	Id            string    `json:"id" db:"id"`
+	Types         []string  `json:"types,omitempty" db:"types"`
+	Supertypes    []string  `json:"supertypes,omitempty" db:"supertypes"`
+	Subtypes      []string  `json:"subtypes,omitempty" db:"subtypes"`
+	ConvertedCost int8      `json:"cmc" db:"cmc"`
+	ManaCost      string    `json:"cost" db:"mana_cost"`
+	Text          string    `json:"text" db:"rules"`
+	Colors        []string  `json:"colors,omitempty" db:"colors"`
+	Power         string    `json:"power,omitempty" db:"power"`
+	Toughness     string    `json:"toughness,omitempty" db:"toughness"`
+	Loyalty       int8      `json:"loyalty,omitempty" db:"loyalty"`
+	Editions      []Edition `json:"editions,omitempty"`
 }
 
 type Edition struct {

@@ -21,7 +21,7 @@ type Database struct {
 
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
-	err := db.conn.Select(&cards, "SELECT name, id FROM cards ORDER BY name ASC LIMIT 100")
+	err := db.conn.Select(&cards, "SELECT id, name, rules FROM cards ORDER BY name ASC LIMIT 100")
 
 	if err != nil {
 		return cards, err
@@ -98,22 +98,11 @@ func TransformCollection(collection MTGCollection) []Card {
 
 // Given an array of cards, load them into the database
 func (db *Database) Load(collection MTGCollection) error {
-	tx, err := db.conn.Begin()
-
-	if err != nil {
-		return err
-	}
-
-	stmt, err := tx.Prepare("INSERT INTO cards (id, name) VALUES ($1, $2)")
-	defer stmt.Close()
-
-	if err != nil {
-		return err
-	}
+	tx := db.conn.MustBegin()
 
 	for _, card := range TransformCollection(collection) {
 		// Not sure how to handle failure here
-		_, err = stmt.Exec(card.Id, card.Name)
+		_, err := tx.NamedExec("INSERT INTO cards (id, name, cmc, mana_cost, rules, loyalty) VALUES (:id, :name, :cmc, :mana_cost, :rules, :loyalty)", &card)
 
 		if err != nil {
 			tx.Rollback()

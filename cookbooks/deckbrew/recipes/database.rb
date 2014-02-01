@@ -16,6 +16,7 @@ package 'make'
 package 'git'
 package 'varnish'
 package 'postgresql-9.3'
+package 'unzip'
 
 tar_extract 'https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz' do
   target_dir '/usr/local'
