@@ -37,7 +37,6 @@ type MTGCard struct {
 	Power         string      `json:"power"`
 	Rarity        string      `json:"rarity"`
 	Rulings       []MTGRuling `json:"rulings"`
-	Set           string      `json:"set"`
 	Subtypes      []string    `json:"subtypes"`
 	Supertypes    []string    `json:"supertypes"`
 	Text          string      `json:"text"`

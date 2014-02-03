@@ -29,10 +29,11 @@ CREATE TABLE editions (
     card_id           varchar(32) DEFAULT '',
     flavor            text DEFAULT '',
     border            varchar(10) DEFAULT '',
-    magicnumber       varchar(10) DEFAULT '',
+    set_number        varchar(10) DEFAULT '',
     layout            varchar(16) DEFAULT '',
     artist            text DEFAULT '',
-    magicset          varchar(100) DEFAULT '',
+    set_id            varchar(3) DEFAULT '',
+    set_name          varchar(100) DEFAULT '',
     watermark         varchar(20) DEFAULT '',
     rarity            varchar(15) DEFAULT ''
 );

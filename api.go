@@ -2,15 +2,25 @@ package main
 
 import (
 	"encoding/json"
-    "os"
 	"flag"
 	"fmt"
 	"github.com/codegangsta/martini"
 	"github.com/codegangsta/martini-contrib/gzip"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
+
+func GetHostname() string {
+	hostname := os.Getenv("DECKBREW_HOSTNAME")
+
+	if hostname == "" {
+		return "api.deckbrew.com"
+	}
+
+	return hostname
+}
 
 // Import this eventually
 type Card struct {
@@ -43,7 +53,7 @@ func explode(types string) []string {
 }
 
 func (c *Card) Fill() {
-	c.Href = fmt.Sprintf("http://%s/cards/%s", GetHostname(), c.Id)
+	c.Href = fmt.Sprintf("http://%s/mtg/cards/%s", GetHostname(), c.Id)
 	c.Types = explode(c.JoinedTypes)
 	c.Supertypes = explode(c.JoinedSupertypes)
 	c.Subtypes = explode(c.JoinedSubtypes)
@@ -51,7 +61,8 @@ func (c *Card) Fill() {
 }
 
 type Edition struct {
-	Set          string `json:"-" db:"magicset"`
+	Set          string `json:"set" db:"set_name"`
+	SetId        string `json:"-" db:"set_id"`
 	CardId       string `json:"-" db:"card_id"`
 	Watermark    string `json:"watermark,omitempty"`
 	Rarity       string `json:"rarity"`
@@ -59,27 +70,29 @@ type Edition struct {
 	Artist       string `json:"artist"`
 	MultiverseId int    `json:"multiverse_id" db:"id"`
 	Flavor       string `json:"flavor,omitempty"`
-	Number       string `json:"number" db:"magicnumber"`
+	Number       string `json:"number" db:"set_number"`
 	Layout       string `json:"layout"`
 	Href         string `json:"url,omitempty" db:"-"`
 	ImageUrl     string `json:"image_url,omitempty" db:"-"`
+	SetUrl       string `json:"set_url,omitempty" db:"-"`
 }
-
-func GetHostname() string {
-    hostname := os.Getenv("DECKBREW_HOSTNAME")
-
-    if hostname == "" {
-            return "api.deckbrew.com"
-    }
-
-    return hostname
-}
-
 
 func (e *Edition) Fill() {
-
-	e.Href = fmt.Sprintf("http://%s/editions/%d", GetHostname(), e.MultiverseId)
+	e.Href = fmt.Sprintf("http://%s/mtg/editions/%d", GetHostname(), e.MultiverseId)
+	e.SetUrl = fmt.Sprintf("http://%s/mtg/sets/%s", GetHostname(), e.SetId)
 	e.ImageUrl = fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", e.MultiverseId)
+}
+
+type Set struct {
+	Id     string `json:"id"`
+	Name   string `json:"Name"`
+	Border string `json:"Border"`
+	Type   string `json:"type"`
+	Href   string `json:"url" db:"-"`
+}
+
+func (s *Set) Fill() {
+	s.Href = fmt.Sprintf("http://%s/mtg/sets/%s", GetHostname(), s.Id)
 }
 
 func JSON(code int, val interface{}) (int, []byte) {
@@ -110,6 +123,28 @@ func GetCards(db *Database, req *http.Request) (int, []byte) {
 	return JSON(http.StatusOK, cards)
 }
 
+func GetSets(db *Database) (int, []byte) {
+	sets, err := db.FetchSets()
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, "")
+	}
+
+	return JSON(http.StatusOK, sets)
+}
+
+func GetSet(db *Database, params martini.Params) (int, []byte) {
+	card, err := db.FetchSet(params["id"])
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, "")
+	}
+
+	return JSON(http.StatusOK, card)
+}
+
 func GetCard(db *Database, params martini.Params) (int, []byte) {
 	card, err := db.FetchCard(params["id"])
 
@@ -121,12 +156,18 @@ func GetCard(db *Database, params martini.Params) (int, []byte) {
 	return JSON(http.StatusOK, card)
 }
 
+func GetEdition(db *Database, params martini.Params) (int, []byte) {
+	cards, err := db.FetchEditions(params["id"])
 
-func GetEditions(db *Database) string {
-	return "Hello world!"
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, "")
+	}
+
+	return JSON(http.StatusOK, cards)
 }
 
-func GetEdition(db *Database, params martini.Params) string {
+func Placeholder(params martini.Params) string {
 	return "Hello world!"
 }
 
@@ -165,13 +206,16 @@ func main() {
 	m.Use(func(c martini.Context, w http.ResponseWriter) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "public,max-age=3600")
+		w.Header().Set("License", "Card names and text are all copyright Wizards of the Coast. This website is not affiliated with Wizards of the Coast in any way.")
 	})
 
 	r := martini.NewRouter()
 
-	r.Get("/cards", GetCards)
-	r.Get("/cards/:id", GetCard)
-	r.Get("/editions/:id", GetEdition)
+	r.Get("/mtg/cards", GetCards)
+	r.Get("/mtg/cards/:id", GetCard)
+	r.Get("/mtg/editions/:id", GetEdition)
+	r.Get("/mtg/sets", GetSets)
+	r.Get("/mtg/sets/:id", GetSet)
 
 	m.Action(r.Handle)
 	m.Map(&db)
