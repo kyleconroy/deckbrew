@@ -23,10 +23,21 @@ tar_extract 'https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz' do
   creates '/usr/local/go/bin'
 end
 
+service "deckapi" do
+  provider Chef::Provider::Service::Upstart
+  action :nothing
+  supports :status => true, :start => true, :stop => true, :restart => true
+end
+
+service "varnish" do
+  action :nothing
+  supports :status => true, :start => true, :stop => true, :restart => true
+end
 
 template "varnish" do
   path "/etc/varnish/default.vcl"
   source "default.vcl.erb"
+  notifies :restart, resources(:service => "varnish")
 end
 
 GO = {
@@ -58,19 +69,14 @@ end
 template "deckapi" do
   path "/etc/init/deckapi.conf"
   source "deckbrew-api.conf.erb"
+  notifies :restart, resources(:service => "deckapi")
 end
 
 template "deckcache-defaults" do
   path "/etc/default/varnish"
   source "deckbrew-cache.conf.erb"
   mode 0755
+  notifies :restart, resources(:service => "varnish")
 end
 
-service "deckapi" do
-  provider Chef::Provider::Service::Upstart
-  action [:enable, :start]
-end
 
-service "varnish" do
-  action [:enable, :start]
-end
