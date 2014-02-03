@@ -1,7 +1,5 @@
 .PHONY: deps server test syncdb serverdb ami
 
-DATABASE_URL := postgres://localhost/deckbrew?sslmode=disable
-
 brewapi: api.go mtgjson.go database.go
 	go build -o brewapi
 

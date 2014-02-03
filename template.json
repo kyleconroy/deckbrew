@@ -6,7 +6,7 @@
       "source_ami": "ami-c45f6281",
       "instance_type": "t1.micro",
       "ssh_username": "ubuntu",
-      "ami_name": "deckbrew {{timestamp}}"
+      "ami_name": "Deckbrew API {{isotime | clean_ami_name}}"
     }
   ],
   "provisioners": [

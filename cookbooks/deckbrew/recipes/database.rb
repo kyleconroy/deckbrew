@@ -25,12 +25,12 @@ end
 
 service "deckapi" do
   provider Chef::Provider::Service::Upstart
-  action :nothing
+  action :enable
   supports :status => true, :start => true, :stop => true, :restart => true
 end
 
 service "varnish" do
-  action :nothing
+  action :enable
   supports :status => true, :start => true, :stop => true, :restart => true
 end
 

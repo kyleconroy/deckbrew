@@ -1,3 +1,4 @@
+Current AMI: ami-682e132d
 
 ## Query Language
 
