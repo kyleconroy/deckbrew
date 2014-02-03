@@ -217,6 +217,9 @@ func main() {
 	r.Get("/mtg/sets", GetSets)
 	r.Get("/mtg/sets/:id", GetSet)
 
+    //They can just download the mtgjson dump
+	//r.Get("/mtg/editions", GetEditions) 
+
 	m.Action(r.Handle)
 	m.Map(&db)
 	m.Run()

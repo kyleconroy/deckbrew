@@ -1,4 +1,30 @@
-Current AMI: ami-682e132d
+## Pagination
+
+Requests that return multiple items will be paginated to 100 items by default.
+You can specify further pages with the ?page parameter.
+
+    $ curl https://api.deckbrew.com/mtg/cards?page=2
+
+Note that page numbering is 1-based and that omitting the ?page parameter will
+return the first page.
+
+### Link Header
+
+The pagination info is included in the Link header. It is important to follow
+these Link header values instead of constructing your own URLs. In some
+instances, such as in the Commits API, pagination is based on SHA1 and not on
+page number.
+
+    Link: <https://api.deckbrew.com/mtg/cards?page=3>; rel="next",
+      <https://api.deckbrew.com/mtg/cards?page=1>; rel="prev"
+
+Linebreak is included for readability.
+
+The possible rel values are:
+
+Name 	| Description
+next 	| Shows the URL of the immediate next page of results.
+prev 	| Shows the URL of the immediate previous page of results.
 
 ## Query Language
 
