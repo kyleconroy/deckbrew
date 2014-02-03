@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+    "os"
 	"flag"
 	"fmt"
 	"github.com/codegangsta/martini"
@@ -42,7 +43,7 @@ func explode(types string) []string {
 }
 
 func (c *Card) Fill() {
-	c.Href = "http://localhost:3000/cards/" + c.Id
+	c.Href = fmt.Sprintf("http://%s/cards/%s", GetHostname(), c.Id)
 	c.Types = explode(c.JoinedTypes)
 	c.Supertypes = explode(c.JoinedSupertypes)
 	c.Subtypes = explode(c.JoinedSubtypes)
@@ -64,8 +65,20 @@ type Edition struct {
 	ImageUrl     string `json:"image_url,omitempty" db:"-"`
 }
 
+func GetHostname() string {
+    hostname := os.Getenv("DECKBREW_HOSTNAME")
+
+    if hostname == "" {
+            return "api.deckbrew.com"
+    }
+
+    return hostname
+}
+
+
 func (e *Edition) Fill() {
-	e.Href = fmt.Sprintf("http://localhost:3000/editions/%d", e.MultiverseId)
+
+	e.Href = fmt.Sprintf("http://%s/editions/%d", GetHostname(), e.MultiverseId)
 	e.ImageUrl = fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", e.MultiverseId)
 }
 

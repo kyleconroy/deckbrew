@@ -37,4 +37,6 @@ cards.json:
 	rm -f AllSets-x.json.zip
 	rm -rf mnt
 
-
+clean:
+	rm -f brewapi
+	rm -rf deckbrew

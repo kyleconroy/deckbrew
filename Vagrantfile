@@ -29,6 +29,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.omnibus.chef_version = :latest
 
   config.vm.provision :chef_solo do |chef|
+
+    chef.json = {
+        "deckbrew" => {
+            "hostname" => "localhost:6001",
+            "event" => "vagrant-ready",
+        }
+    }
+
     chef.cookbooks_path = "cookbooks"
     chef.add_recipe "deckbrew::database"
   end

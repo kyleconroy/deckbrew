@@ -1,5 +1,10 @@
 description "DeckBrew API"
 
+respawn
+
+start on <%= node['deckbrew']['event'] %>
+env DECKBREW_HOSTNAME=<%= node['deckbrew']['hostname'] %>
+
 script
         chdir /usr/local/deckbrew
         exec ./brewapi
