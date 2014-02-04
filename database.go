@@ -13,18 +13,97 @@ import (
 )
 
 type Query struct {
-	PageSize int
-	Page     int
-	Types    []string
+	PageSize   int
+	Page       int
+	Types      []string
+	Supertypes []string
+	Colors     []string
+	Subtypes   []string
+}
+
+func (q *Query) WhereClause() (string, []interface{}) {
+	query := "WHERE "
+	count := 1
+	items := []interface{}{}
+
+    pgarray := func(strs []string) string {
+	    sort.Strings(strs)
+	    return CreateStringArray(strs)
+    }
+
+	if len(q.Types) != 0 {
+		query += fmt.Sprintf("types && $%d", count)
+		count += 1
+		items = append(items, pgarray(q.Types))
+	}
+
+	if len(q.Subtypes) != 0 {
+		if count > 1 {
+			query += " AND "
+		}
+
+		query += fmt.Sprintf("subtypes && $%d", count)
+		count += 1
+		items = append(items, pgarray(q.Subtypes))
+	}
+
+	if len(q.Supertypes) != 0 {
+		if count > 1 {
+			query += " AND "
+		}
+
+		query += fmt.Sprintf("supertypes && $%d", count)
+		count += 1
+		items = append(items, pgarray(q.Supertypes))
+	}
+
+	if len(q.Colors) != 0 {
+		if count > 1 {
+			query += " AND "
+		}
+
+		query += fmt.Sprintf("colors && $%d", count)
+		count += 1
+		items = append(items, pgarray(q.Colors))
+	}
+
+
+	query += fmt.Sprintf(" ORDER BY name ASC LIMIT 100 OFFSET $%d", count)
+	items = append(items, q.PageOffset())
+
+	return query, items
 }
 
 func (q *Query) PageOffset() int {
 	return q.Page * 100
 }
 
-func (q *Query) TypesArray() string {
-	sort.Strings(q.Types)
-	return CreateStringArray(q.Types)
+func extractSubtypes(args url.Values) ([]string, error) {
+	return args["subtype"], nil
+}
+
+func extractColors(args url.Values) ([]string, error) {
+	allowedColors := map[string]bool{
+		"red":   true,
+		"blue":  true,
+		"green": true,
+		"black": true,
+		"white": true,
+	}
+
+	colors := args["color"]
+
+	if len(colors) == 0 {
+		return []string{}, nil
+	}
+
+	for _, t := range colors {
+		if !allowedColors[t] {
+			return colors, fmt.Errorf("The color '%s' is not recognized", t)
+		}
+	}
+
+	return colors, nil
 }
 
 func extractSupertypes(args url.Values) ([]string, error) {
@@ -126,6 +205,24 @@ func NewQuery(u *url.URL) (Query, error) {
 		return q, err
 	}
 
+	q.Supertypes, err = extractSupertypes(args)
+
+	if err != nil {
+		return q, err
+	}
+
+	q.Subtypes, err = extractSubtypes(args)
+
+	if err != nil {
+		return q, err
+	}
+
+	q.Colors, err = extractColors(args)
+
+	if err != nil {
+		return q, err
+	}
+
 	return q, nil
 }
 
@@ -197,7 +294,10 @@ func (db *Database) FetchSet(id string) (Set, error) {
 
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
-	err := db.conn.Select(&cards, "SELECT name, id, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards WHERE types && $1 ORDER BY name ASC LIMIT 100 OFFSET $2", q.TypesArray(), q.PageOffset())
+
+	clause, items := q.WhereClause()
+
+	err := db.conn.Select(&cards, "SELECT name, id, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards "+clause, items...)
 
 	if err != nil {
 		return cards, err

@@ -138,7 +138,7 @@ func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []by
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusBadRequest, Errors("Invalid query"))
+		return JSON(http.StatusBadRequest, Errors(err.Error()))
 	}
 
 	cards, err := db.FetchCards(q)
