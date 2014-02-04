@@ -88,7 +88,7 @@ Curly and square brackets can be combined:
 
     Numbers from 1 up to but not including 5
 
-    count:[1..5}
+    count:[1..5]
 
 Ranges with one side unbounded can use the following syntax:
 
@@ -105,7 +105,7 @@ to join two clauses with an AND operator:
     age:(+>=10 +<20)
 
 The parsing of ranges in query strings can be complex and error prone. It is
-much more reliable to use an explicit range filter.  Boosting
+much more reliable to use an explicit range filter.
 
 ### Boolean operators
 

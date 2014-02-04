@@ -1,2 +1,2 @@
 default['deckbrew']['event'] = 'filesystem'
-default['deckbrew']['hostname'] = 'api.deckbrew.com'
+default['deckbrew']['hostname'] = 'https://api.deckbrew.com'

@@ -13,6 +13,7 @@ CREATE TABLE cards (
     cmc               integer DEFAULT 0
 );
 
+CREATE INDEX cards_name_types ON cards(a_types);
 CREATE INDEX cards_name_index ON cards(name);
 CREATE INDEX cards_power_index ON cards(power);
 CREATE INDEX cards_toughness_index ON cards(toughness);

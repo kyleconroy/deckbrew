@@ -32,7 +32,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     chef.json = {
         "deckbrew" => {
-            "hostname" => "localhost:6001",
+            "hostname" => "http://localhost:6001",
             "event" => "vagrant-ready",
         }
     }

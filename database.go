@@ -6,7 +6,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"io"
-	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -15,6 +16,21 @@ type Query struct {
 	PageSize int
 	Page     int
 	Types    map[string]bool
+}
+
+func (q *Query) TypeRegex() string {
+	regex := ""
+	for key, ok := range q.Types {
+            if !ok {
+                    continue
+                    }
+		if regex == "" {
+			regex = key
+		} else {
+			regex += "|" + key
+		}
+	}
+	return regex
 }
 
 type Database struct {
@@ -81,7 +97,7 @@ func (db *Database) FetchSet(id string) (Set, error) {
 
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
-	err := db.conn.Select(&cards, "SELECT * FROM cards ORDER BY name ASC LIMIT 100 OFFSET $1", q.Page*100)
+	err := db.conn.Select(&cards, "SELECT * FROM cards WHERE types ~ $2 ORDER BY name ASC LIMIT 100 OFFSET $1", q.Page*100, q.TypeRegex())
 
 	if err != nil {
 		return cards, err
@@ -129,9 +145,10 @@ func (db *Database) FetchCard(id string) (Card, error) {
 	return card, nil
 }
 
-func NewQuery(req *http.Request) (Query, error) {
+func NewQuery(args url.Values) (Query, error) {
 	q := Query{}
-	pagenum := req.URL.Query().Get("page")
+
+	pagenum := args.Get("page")
 
 	if pagenum == "" {
 		pagenum = "0"
@@ -148,6 +165,41 @@ func NewQuery(req *http.Request) (Query, error) {
 	}
 
 	q.Page = page
+
+	search := args.Get("q")
+
+	if search == "" {
+		pagenum = "0"
+	}
+
+	t := regexp.MustCompile(`type:(\w+)`)
+
+	types := map[string]bool{
+		"creature":     true,
+		"land":         true,
+		"enchantment":  true,
+		"sorcery":      true,
+		"instant":      true,
+		"planeswalker": true,
+		"artfact":      true,
+		"plane":        false,
+		"scheme":       false,
+	}
+
+	matches := t.FindStringSubmatch(search)
+
+	if len(matches) != 2 {
+		q.Types = types
+		return q, nil
+	}
+
+    result := matches[1]
+
+	if _, ok := types[result]; !ok {
+		return q, fmt.Errorf("The type '%s' is not recognized", result)
+	}
+
+	q.Types = map[string]bool{result: true}
 
 	return q, nil
 }

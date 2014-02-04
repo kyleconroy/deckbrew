@@ -1,7 +1,6 @@
 package main
 
 import (
-        "strconv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -18,7 +18,7 @@ func GetHostname() string {
 	hostname := os.Getenv("DECKBREW_HOSTNAME")
 
 	if hostname == "" {
-		return "api.deckbrew.com"
+		return "https://api.deckbrew.com"
 	}
 
 	return hostname
@@ -55,7 +55,7 @@ func explode(types string) []string {
 }
 
 func (c *Card) Fill() {
-	c.Href = fmt.Sprintf("http://%s/mtg/cards/%s", GetHostname(), c.Id)
+	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
 	c.Types = explode(c.JoinedTypes)
 	c.Supertypes = explode(c.JoinedSupertypes)
 	c.Subtypes = explode(c.JoinedSubtypes)
@@ -80,8 +80,8 @@ type Edition struct {
 }
 
 func (e *Edition) Fill() {
-	e.Href = fmt.Sprintf("http://%s/mtg/editions/%d", GetHostname(), e.MultiverseId)
-	e.SetUrl = fmt.Sprintf("http://%s/mtg/sets/%s", GetHostname(), e.SetId)
+	e.Href = fmt.Sprintf("%s/mtg/editions/%d", GetHostname(), e.MultiverseId)
+	e.SetUrl = fmt.Sprintf("%s/mtg/sets/%s", GetHostname(), e.SetId)
 	e.ImageUrl = fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", e.MultiverseId)
 }
 
@@ -94,7 +94,7 @@ type Set struct {
 }
 
 func (s *Set) Fill() {
-	s.Href = fmt.Sprintf("http://%s/mtg/sets/%s", GetHostname(), s.Id)
+	s.Href = fmt.Sprintf("%s/mtg/sets/%s", GetHostname(), s.Id)
 }
 
 func JSON(code int, val interface{}) (int, []byte) {
@@ -107,26 +107,26 @@ func JSON(code int, val interface{}) (int, []byte) {
 	return code, blob
 }
 
-func LinkHeader(scheme, host string, u *url.URL, q Query) string {
+func LinkHeader(host string, u *url.URL, q Query) string {
 	if q.Page == 0 {
 		qstring := u.Query()
 		qstring.Set("page", "1")
-		return fmt.Sprintf("<%s://%s%s?%s>; rel=\"next\"", scheme, host, u.Path, qstring.Encode())
+		return fmt.Sprintf("<%s%s?%s>; rel=\"next\"", host, u.Path, qstring.Encode())
 	} else {
 		qstring := u.Query()
 
 		qstring.Set("page", strconv.Itoa(q.Page-1))
-		prev := fmt.Sprintf("<%s://%s%s?%s>; rel=\"prev\"", scheme, host, u.Path, qstring.Encode())
+		prev := fmt.Sprintf("<%s%s?%s>; rel=\"prev\"", host, u.Path, qstring.Encode())
 
 		qstring.Set("page", strconv.Itoa(q.Page+1))
-		next := fmt.Sprintf("<%s://%s%s?%s>; rel=\"next\"", scheme, host, u.Path, qstring.Encode())
+		next := fmt.Sprintf("<%s%s?%s>; rel=\"next\"", host, u.Path, qstring.Encode())
 
 		return prev + ", " + next
 	}
 }
 
 func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []byte) {
-	q, err := NewQuery(req)
+	q, err := NewQuery(req.URL.Query())
 
 	if err != nil {
 		log.Println(err)
@@ -140,7 +140,7 @@ func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []by
 		return JSON(http.StatusNotFound, "")
 	}
 
-    w.Header().Set("Link", LinkHeader("http", GetHostname(), req.URL, q))
+	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, q))
 
 	return JSON(http.StatusOK, cards)
 }
@@ -228,7 +228,8 @@ func main() {
 	m.Use(func(c martini.Context, w http.ResponseWriter) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "public,max-age=3600")
-		w.Header().Set("License", "Card names and text are copyright Wizards of the Coast. This API is not affiliated with Wizards of the Coast in any way.")
+		w.Header().Set("License", "The textual information presented through this API about Magic: The Gathering is copyrighted by Wizards of the Coast.")
+		w.Header().Set("Disclaimer", "This API is not produced, endorsed, supported, or affiliated with Wizards of the Coast.")
 	})
 
 	r := martini.NewRouter()
