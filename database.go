@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/md5"
-    "log"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -61,7 +60,7 @@ func extractTypes(search string) (map[string]bool, error) {
 		return types, fmt.Errorf("The type '%s' is not recognized", result)
 	}
 
-    return map[string]bool{result: true}, nil
+	return map[string]bool{result: true}, nil
 }
 
 func extractPage(pagenum string) (int, error) {
@@ -79,31 +78,29 @@ func extractPage(pagenum string) (int, error) {
 		return 0, fmt.Errorf("Page parameter must be >= 0")
 	}
 
-    return page, nil
+	return page, nil
 }
-
 
 func NewQuery(args url.Values) (Query, error) {
 	q := Query{}
 
-    var err error
+	var err error
 	search := args.Get("q")
 
-    q.Page, err = extractPage(args.Get("page"))
+	q.Page, err = extractPage(args.Get("page"))
 
-    if err != nil {
-            return q, err
-    }
+	if err != nil {
+		return q, err
+	}
 
-    q.Types, err = extractTypes(search)
+	q.Types, err = extractTypes(search)
 
-    if err != nil {
-            return q, err
-}
+	if err != nil {
+		return q, err
+	}
 
 	return q, nil
 }
-
 
 type Database struct {
 	conn *sqlx.DB
@@ -218,7 +215,7 @@ func (db *Database) FetchCard(id string) (Card, error) {
 }
 
 // FIXME: This function is super gross. Instead of abusing regexes,
-// we should actually be parsing the search string using a lexer 
+// we should actually be parsing the search string using a lexer
 // and stuff
 
 func Open(url string) (Database, error) {
