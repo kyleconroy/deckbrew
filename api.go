@@ -1,6 +1,7 @@
 package main
 
 import (
+        "strconv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"github.com/codegangsta/martini-contrib/gzip"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -105,7 +107,25 @@ func JSON(code int, val interface{}) (int, []byte) {
 	return code, blob
 }
 
-func GetCards(db *Database, req *http.Request) (int, []byte) {
+func LinkHeader(scheme, host string, u *url.URL, q Query) string {
+	if q.Page == 0 {
+		qstring := u.Query()
+		qstring.Set("page", "1")
+		return fmt.Sprintf("<%s://%s%s?%s>; rel=\"next\"", scheme, host, u.Path, qstring.Encode())
+	} else {
+		qstring := u.Query()
+
+		qstring.Set("page", strconv.Itoa(q.Page-1))
+		prev := fmt.Sprintf("<%s://%s%s?%s>; rel=\"prev\"", scheme, host, u.Path, qstring.Encode())
+
+		qstring.Set("page", strconv.Itoa(q.Page+1))
+		next := fmt.Sprintf("<%s://%s%s?%s>; rel=\"next\"", scheme, host, u.Path, qstring.Encode())
+
+		return prev + ", " + next
+	}
+}
+
+func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []byte) {
 	q, err := NewQuery(req)
 
 	if err != nil {
@@ -119,6 +139,8 @@ func GetCards(db *Database, req *http.Request) (int, []byte) {
 		log.Println(err)
 		return JSON(http.StatusNotFound, "")
 	}
+
+    w.Header().Set("Link", LinkHeader("http", GetHostname(), req.URL, q))
 
 	return JSON(http.StatusOK, cards)
 }
@@ -206,7 +228,7 @@ func main() {
 	m.Use(func(c martini.Context, w http.ResponseWriter) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "public,max-age=3600")
-		w.Header().Set("License", "Card names and text are all copyright Wizards of the Coast. This website is not affiliated with Wizards of the Coast in any way.")
+		w.Header().Set("License", "Card names and text are copyright Wizards of the Coast. This API is not affiliated with Wizards of the Coast in any way.")
 	})
 
 	r := martini.NewRouter()
@@ -217,8 +239,8 @@ func main() {
 	r.Get("/mtg/sets", GetSets)
 	r.Get("/mtg/sets/:id", GetSet)
 
-    //They can just download the mtgjson dump
-	//r.Get("/mtg/editions", GetEditions) 
+	//They can just download the mtgjson dump
+	//r.Get("/mtg/editions", GetEditions)
 
 	m.Action(r.Handle)
 	m.Map(&db)

@@ -143,9 +143,9 @@ func NewQuery(req *http.Request) (Query, error) {
 		return q, err
 	}
 
-    if page < 0 {
-            return q, fmt.Errorf("Page parameter must be >= 0")
-    }
+	if page < 0 {
+		return q, fmt.Errorf("Page parameter must be >= 0")
+	}
 
 	q.Page = page
 
