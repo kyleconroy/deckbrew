@@ -178,6 +178,15 @@ func GetCard(db *Database, params martini.Params) (int, []byte) {
 	return JSON(http.StatusOK, card)
 }
 
+type Pong struct {
+        Rally string `json:"rally"`
+}
+
+func Ping() (int, []byte) {
+    return JSON(http.StatusOK, Pong{Rally:"serve"})
+}
+
+
 func GetEdition(db *Database, params martini.Params) (int, []byte) {
 	cards, err := db.FetchEditions(params["id"])
 
@@ -234,6 +243,7 @@ func main() {
 
 	r := martini.NewRouter()
 
+	r.Get("/ping", Ping)
 	r.Get("/mtg/cards", GetCards)
 	r.Get("/mtg/cards/:id", GetCard)
 	r.Get("/mtg/editions/:id", GetEdition)
