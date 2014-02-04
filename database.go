@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/md5"
+    "log"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -21,9 +22,9 @@ type Query struct {
 func (q *Query) TypeRegex() string {
 	regex := ""
 	for key, ok := range q.Types {
-            if !ok {
-                    continue
-                    }
+		if !ok {
+			continue
+		}
 		if regex == "" {
 			regex = key
 		} else {
@@ -32,6 +33,77 @@ func (q *Query) TypeRegex() string {
 	}
 	return regex
 }
+
+func extractTypes(search string) (map[string]bool, error) {
+	t := regexp.MustCompile(`type:(\w+)`)
+
+	types := map[string]bool{
+		"creature":     true,
+		"land":         true,
+		"enchantment":  true,
+		"sorcery":      true,
+		"instant":      true,
+		"planeswalker": true,
+		"artifact":     true,
+		"plane":        false,
+		"scheme":       false,
+	}
+
+	matches := t.FindStringSubmatch(search)
+
+	if len(matches) != 2 {
+		return types, nil
+	}
+
+	result := matches[1]
+
+	if _, ok := types[result]; !ok {
+		return types, fmt.Errorf("The type '%s' is not recognized", result)
+	}
+
+    return map[string]bool{result: true}, nil
+}
+
+func extractPage(pagenum string) (int, error) {
+	if pagenum == "" {
+		pagenum = "0"
+	}
+
+	page, err := strconv.Atoi(pagenum)
+
+	if err != nil {
+		return 0, err
+	}
+
+	if page < 0 {
+		return 0, fmt.Errorf("Page parameter must be >= 0")
+	}
+
+    return page, nil
+}
+
+
+func NewQuery(args url.Values) (Query, error) {
+	q := Query{}
+
+    var err error
+	search := args.Get("q")
+
+    q.Page, err = extractPage(args.Get("page"))
+
+    if err != nil {
+            return q, err
+    }
+
+    q.Types, err = extractTypes(search)
+
+    if err != nil {
+            return q, err
+}
+
+	return q, nil
+}
+
 
 type Database struct {
 	conn *sqlx.DB
@@ -145,64 +217,9 @@ func (db *Database) FetchCard(id string) (Card, error) {
 	return card, nil
 }
 
-func NewQuery(args url.Values) (Query, error) {
-	q := Query{}
-
-	pagenum := args.Get("page")
-
-	if pagenum == "" {
-		pagenum = "0"
-	}
-
-	page, err := strconv.Atoi(pagenum)
-
-	if err != nil {
-		return q, err
-	}
-
-	if page < 0 {
-		return q, fmt.Errorf("Page parameter must be >= 0")
-	}
-
-	q.Page = page
-
-	search := args.Get("q")
-
-	if search == "" {
-		pagenum = "0"
-	}
-
-	t := regexp.MustCompile(`type:(\w+)`)
-
-	types := map[string]bool{
-		"creature":     true,
-		"land":         true,
-		"enchantment":  true,
-		"sorcery":      true,
-		"instant":      true,
-		"planeswalker": true,
-		"artfact":      true,
-		"plane":        false,
-		"scheme":       false,
-	}
-
-	matches := t.FindStringSubmatch(search)
-
-	if len(matches) != 2 {
-		q.Types = types
-		return q, nil
-	}
-
-    result := matches[1]
-
-	if _, ok := types[result]; !ok {
-		return q, fmt.Errorf("The type '%s' is not recognized", result)
-	}
-
-	q.Types = map[string]bool{result: true}
-
-	return q, nil
-}
+// FIXME: This function is super gross. Instead of abusing regexes,
+// we should actually be parsing the search string using a lexer 
+// and stuff
 
 func Open(url string) (Database, error) {
 	conn, err := sqlx.Open("postgres", url)

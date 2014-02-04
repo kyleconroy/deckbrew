@@ -101,10 +101,14 @@ func JSON(code int, val interface{}) (int, []byte) {
 	blob, err := json.Marshal(val)
 
 	if err != nil {
-		return 500, []byte("INTERNAL SERVER ERROR")
+		return 500, []byte(`{"error": "Internal server error :("}"`)
 	}
 
 	return code, blob
+}
+
+func Errors(errors ...string) ApiError {
+        return ApiError{Errors:errors}
 }
 
 func LinkHeader(host string, u *url.URL, q Query) string {
@@ -125,19 +129,24 @@ func LinkHeader(host string, u *url.URL, q Query) string {
 	}
 }
 
+type ApiError struct {
+        Errors []string `json:"errors"`
+}
+
+
 func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []byte) {
 	q, err := NewQuery(req.URL.Query())
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusBadRequest, "")
+        return JSON(http.StatusBadRequest, Errors("Invalid query"))
 	}
 
 	cards, err := db.FetchCards(q)
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusNotFound, "")
+        return JSON(http.StatusNotFound, Errors("Cards not found"))
 	}
 
 	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, q))
@@ -150,7 +159,7 @@ func GetSets(db *Database) (int, []byte) {
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusNotFound, "")
+        return JSON(http.StatusNotFound, Errors("Sets not found"))
 	}
 
 	return JSON(http.StatusOK, sets)
@@ -161,7 +170,7 @@ func GetSet(db *Database, params martini.Params) (int, []byte) {
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusNotFound, "")
+        return JSON(http.StatusNotFound, Errors("Set not found"))
 	}
 
 	return JSON(http.StatusOK, card)
@@ -172,31 +181,35 @@ func GetCard(db *Database, params martini.Params) (int, []byte) {
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusNotFound, "")
+        return JSON(http.StatusNotFound, Errors("Card not found"))
 	}
 
 	return JSON(http.StatusOK, card)
 }
 
 type Pong struct {
-        Rally string `json:"rally"`
+	Rally string `json:"rally"`
 }
 
 func Ping() (int, []byte) {
-    return JSON(http.StatusOK, Pong{Rally:"serve"})
+	return JSON(http.StatusOK, Pong{Rally: "serve"})
 }
-
 
 func GetEdition(db *Database, params martini.Params) (int, []byte) {
 	cards, err := db.FetchEditions(params["id"])
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusNotFound, "")
+        return JSON(http.StatusNotFound, Errors("Edition not found"))
 	}
 
 	return JSON(http.StatusOK, cards)
 }
+
+func NotFound() (int, []byte) {
+        return JSON(http.StatusNotFound, Errors("No endpoint here"))
+}
+
 
 func Placeholder(params martini.Params) string {
 	return "Hello world!"
@@ -249,6 +262,7 @@ func main() {
 	r.Get("/mtg/editions/:id", GetEdition)
 	r.Get("/mtg/sets", GetSets)
 	r.Get("/mtg/sets/:id", GetSet)
+    r.NotFound(NotFound)
 
 	//They can just download the mtgjson dump
 	//r.Get("/mtg/editions", GetEditions)
