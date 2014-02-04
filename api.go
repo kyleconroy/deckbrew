@@ -134,7 +134,7 @@ type ApiError struct {
 }
 
 func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []byte) {
-	q, err := NewQuery(req.URL.Query())
+	q, err := NewQuery(req.URL)
 
 	if err != nil {
 		log.Println(err)

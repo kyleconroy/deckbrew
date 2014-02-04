@@ -7,7 +7,7 @@ import (
 	_ "github.com/lib/pq"
 	"io"
 	"net/url"
-	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -15,55 +15,82 @@ import (
 type Query struct {
 	PageSize int
 	Page     int
-	Types    map[string]bool
+	Types    []string
 }
 
-func (q *Query) TypeRegex() string {
-	regex := ""
-	for key, ok := range q.Types {
-		if !ok {
-			continue
-		}
-		if regex == "" {
-			regex = key
-		} else {
-			regex += "|" + key
+func (q *Query) PageOffset() int {
+	return q.Page * 100
+}
+
+func (q *Query) TypesArray() string {
+	sort.Strings(q.Types)
+	return CreateStringArray(q.Types)
+}
+
+func extractSupertypes(args url.Values) ([]string, error) {
+	allowedTypes := map[string]bool{
+		"legendary": true,
+		"basic":     true,
+		"world":     true,
+		"snow":      true,
+		"ongoing":   true,
+	}
+
+	types := args["supertype"]
+
+	if len(types) == 0 {
+		return []string{}, nil
+	}
+
+	for _, t := range types {
+		if !allowedTypes[t] {
+			return types, fmt.Errorf("The supertype '%s' is not recognized", t)
 		}
 	}
-	return regex
+
+	return types, nil
 }
 
-func extractTypes(search string) (map[string]bool, error) {
-	t := regexp.MustCompile(`type:(\w+)`)
-
-	types := map[string]bool{
+func extractTypes(args url.Values) ([]string, error) {
+	allowedTypes := map[string]bool{
 		"creature":     true,
 		"land":         true,
+		"tribal":       true,
+		"phenomenon":   true,
+		"summon":       true,
 		"enchantment":  true,
 		"sorcery":      true,
+		"vanguard":     true,
 		"instant":      true,
 		"planeswalker": true,
 		"artifact":     true,
-		"plane":        false,
-		"scheme":       false,
+		"plane":        true,
+		"scheme":       true,
 	}
 
-	matches := t.FindStringSubmatch(search)
-
-	if len(matches) != 2 {
-		return types, nil
+	defaultTypes := []string{
+		"creature", "land", "enchantment", "sorcery",
+		"instant", "planeswalker", "artifact",
 	}
 
-	result := matches[1]
+	types := args["type"]
 
-	if _, ok := types[result]; !ok {
-		return types, fmt.Errorf("The type '%s' is not recognized", result)
+	if len(types) == 0 {
+		return defaultTypes, nil
 	}
 
-	return map[string]bool{result: true}, nil
+	for _, t := range types {
+		if !allowedTypes[t] {
+			return types, fmt.Errorf("The type '%s' is not recognized", t)
+		}
+	}
+
+	return types, nil
 }
 
-func extractPage(pagenum string) (int, error) {
+func extractPage(args url.Values) (int, error) {
+	pagenum := args.Get("page")
+
 	if pagenum == "" {
 		pagenum = "0"
 	}
@@ -81,19 +108,19 @@ func extractPage(pagenum string) (int, error) {
 	return page, nil
 }
 
-func NewQuery(args url.Values) (Query, error) {
+func NewQuery(u *url.URL) (Query, error) {
+	var err error
+
+	args := u.Query()
 	q := Query{}
 
-	var err error
-	search := args.Get("q")
-
-	q.Page, err = extractPage(args.Get("page"))
+	q.Page, err = extractPage(args)
 
 	if err != nil {
 		return q, err
 	}
 
-	q.Types, err = extractTypes(search)
+	q.Types, err = extractTypes(args)
 
 	if err != nil {
 		return q, err
@@ -104,6 +131,10 @@ func NewQuery(args url.Values) (Query, error) {
 
 type Database struct {
 	conn *sqlx.DB
+}
+
+func (db *Database) ScanCard(c *Card, id string) error {
+	return db.conn.Get(c, "SELECT name, id, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards WHERE id=$1", id)
 }
 
 func (db *Database) FetchEditions(id string) ([]Card, error) {
@@ -121,7 +152,7 @@ func (db *Database) FetchEditions(id string) ([]Card, error) {
 
 		var card Card
 
-		err = db.conn.Get(&card, "SELECT * FROM cards WHERE id=$1", ed.CardId)
+		err = db.ScanCard(&card, ed.CardId)
 
 		if err != nil {
 			continue
@@ -166,7 +197,7 @@ func (db *Database) FetchSet(id string) (Set, error) {
 
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
-	err := db.conn.Select(&cards, "SELECT * FROM cards WHERE types ~ $2 ORDER BY name ASC LIMIT 100 OFFSET $1", q.Page*100, q.TypeRegex())
+	err := db.conn.Select(&cards, "SELECT name, id, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards WHERE types && $1 ORDER BY name ASC LIMIT 100 OFFSET $2", q.TypesArray(), q.PageOffset())
 
 	if err != nil {
 		return cards, err
@@ -193,7 +224,7 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 func (db *Database) FetchCard(id string) (Card, error) {
 	var card Card
 
-	err := db.conn.Get(&card, "SELECT * FROM cards WHERE id=$1", id)
+	err := db.ScanCard(&card, id)
 
 	if err != nil {
 		return card, err
@@ -234,8 +265,13 @@ func makeId(c MTGCard) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func join(things []string) string {
-	return strings.ToLower(strings.Join(things, ","))
+func normalize(things []string) []string {
+	sorted := []string{}
+	for _, thing := range things {
+		sorted = append(sorted, strings.ToLower(strings.Replace(thing, ",", "", -1)))
+	}
+	sort.Strings(sorted)
+	return sorted
 }
 
 func TransformEdition(s MTGSet, c MTGCard) Edition {
@@ -245,7 +281,7 @@ func TransformEdition(s MTGSet, c MTGCard) Edition {
 		Flavor:       c.Flavor,
 		MultiverseId: c.MultiverseId,
 		Watermark:    c.Watermark,
-		Rarity:       c.Rarity,
+		Rarity:       strings.ToLower(c.Rarity),
 		Artist:       c.Artist,
 		Border:       c.Border,
 		Layout:       c.Layout,
@@ -266,18 +302,18 @@ func TransformSet(s MTGSet) Set {
 
 func TransformCard(c MTGCard) Card {
 	return Card{
-		Name:             c.Name,
-		Id:               makeId(c),
-		Text:             c.Text,
-		JoinedColors:     join(c.Colors),
-		JoinedTypes:      join(c.Types),
-		JoinedSupertypes: join(c.Supertypes),
-		JoinedSubtypes:   join(c.Subtypes),
-		Power:            c.Power,
-		Toughness:        c.Toughness,
-		Loyalty:          c.Loyalty,
-		ManaCost:         c.ManaCost,
-		ConvertedCost:    int(c.ConvertedCost),
+		Name:          c.Name,
+		Id:            makeId(c),
+		Text:          c.Text,
+		Colors:        normalize(c.Colors),
+		Types:         normalize(c.Types),
+		Supertypes:    normalize(c.Supertypes),
+		Subtypes:      normalize(c.Subtypes),
+		Power:         c.Power,
+		Toughness:     c.Toughness,
+		Loyalty:       c.Loyalty,
+		ManaCost:      c.ManaCost,
+		ConvertedCost: int(c.ConvertedCost),
 	}
 }
 
@@ -305,6 +341,10 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
 	return sets, cards, editions
 }
 
+func CreateStringArray(values []string) string {
+	return "{" + strings.Join(values, ",") + "}"
+}
+
 // Given an array of cards, load them into the database
 func (db *Database) Load(collection MTGCollection) error {
 	tx := db.conn.MustBegin()
@@ -321,9 +361,9 @@ func (db *Database) Load(collection MTGCollection) error {
 		}
 	}
 
-	for _, card := range cards {
+	for _, c := range cards {
 		// Not sure how to handle failure here
-		_, err := tx.NamedExec("INSERT INTO cards (id, name, cmc, mana_cost, rules, loyalty, power, toughness, types, supertypes, subtypes, colors) VALUES (:id, :name, :cmc, :mana_cost, :rules, :loyalty, :power, :toughness, :types, :supertypes, :subtypes, :colors)", &card)
+		_, err := tx.Exec("INSERT INTO cards (id, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty)
 
 		if err != nil {
 			tx.Rollback()
