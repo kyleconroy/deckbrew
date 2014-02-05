@@ -215,32 +215,7 @@ func Placeholder(params martini.Params) string {
 	return "Hello world!"
 }
 
-func main() {
-	flag.Parse()
-
-	db, err := Open("postgres://urza:power9@localhost/deckbrew?sslmode=disable")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if flag.Arg(0) == "load" {
-		collection, err := LoadCollection(flag.Arg(1))
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = db.Load(collection)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Println("Loaded all data into the database")
-		return
-	}
-
+func NewApi(db *Database) *martini.Martini {
 	m := martini.New()
 
 	// Setup middleware
@@ -268,6 +243,37 @@ func main() {
 	//r.Get("/mtg/editions", GetEditions)
 
 	m.Action(r.Handle)
-	m.Map(&db)
+	m.Map(db)
+
+	return m
+}
+
+func main() {
+	flag.Parse()
+
+	db, err := Open("postgres://urza:power9@localhost/deckbrew?sslmode=disable")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if flag.Arg(0) == "load" {
+		collection, err := LoadCollection(flag.Arg(1))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = db.Load(collection)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println("Loaded all data into the database")
+		return
+	}
+
+	m := NewApi(&db)
 	m.Run()
 }

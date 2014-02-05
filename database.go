@@ -1,14 +1,14 @@
 package main
 
 import (
-        "log"
-        "regexp"
 	"crypto/md5"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"io"
+	"log"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,8 +22,8 @@ type Query struct {
 	Colors     []string
 	Subtypes   []string
 	Rarity     []string
-    Sets []string
-    Name string
+	Sets       []string
+	Name       string
 }
 
 func (q *Query) WhereClause() (string, []interface{}) {
@@ -31,14 +31,14 @@ func (q *Query) WhereClause() (string, []interface{}) {
 	count := 1
 	items := []interface{}{}
 
-    pgarray := func(strs []string) string {
-	    sort.Strings(strs)
-	    return CreateStringArray(strs)
-    }
+	pgarray := func(strs []string) string {
+		sort.Strings(strs)
+		return CreateStringArray(strs)
+	}
 
-    query += fmt.Sprintf("types && $%d", count)
-    count += 1
-    items = append(items, pgarray(q.Types))
+	query += fmt.Sprintf("types && $%d", count)
+	count += 1
+	items = append(items, pgarray(q.Types))
 
 	if len(q.Subtypes) != 0 {
 		query += " AND " + fmt.Sprintf("subtypes && $%d", count)
@@ -46,7 +46,7 @@ func (q *Query) WhereClause() (string, []interface{}) {
 		items = append(items, pgarray(q.Subtypes))
 	}
 
-    if q.Name != "" {
+	if q.Name != "" {
 		query += " AND " + fmt.Sprintf("name ~* $%d", count)
 		count += 1
 		items = append(items, q.Name)
@@ -90,9 +90,8 @@ func extractSubtypes(args url.Values) ([]string, error) {
 	return args["subtype"], nil
 }
 
-
 func extractItems(args url.Values, key string, allowed map[string]bool) ([]string, error) {
-    items := args[key]
+	items := args[key]
 
 	if len(items) == 0 {
 		return []string{}, nil
@@ -109,16 +108,15 @@ func extractItems(args url.Values, key string, allowed map[string]bool) ([]strin
 
 func extractRarity(args url.Values) ([]string, error) {
 	allowed := map[string]bool{
-		"common":   true,
-		"uncommon":  true,
-		"rare": true,
+		"common":      true,
+		"uncommon":    true,
+		"rare":        true,
 		"mythic rare": true,
-		"special": true,
-		"basic land": true,
+		"special":     true,
+		"basic land":  true,
 	}
-    return extractItems(args, "rarity", allowed)
+	return extractItems(args, "rarity", allowed)
 }
-
 
 func extractColors(args url.Values) ([]string, error) {
 	allowed := map[string]bool{
@@ -128,7 +126,7 @@ func extractColors(args url.Values) ([]string, error) {
 		"black": true,
 		"white": true,
 	}
-    return extractItems(args, "color", allowed)
+	return extractItems(args, "color", allowed)
 }
 
 func extractSupertypes(args url.Values) ([]string, error) {
@@ -139,23 +137,22 @@ func extractSupertypes(args url.Values) ([]string, error) {
 		"snow":      true,
 		"ongoing":   true,
 	}
-    return extractItems(args, "supertype", allowed)
+	return extractItems(args, "supertype", allowed)
 }
 
 func extractName(args url.Values) (string, error) {
-    name := args.Get("name")
+	name := args.Get("name")
 
-    if name == "" {
-            return "", nil
-    }
+	if name == "" {
+		return "", nil
+	}
 
-    if match, _ := regexp.MatchString("^[0-9A-Za-z ]+$", name); !match {
-            return "", fmt.Errorf("The pattern %s can only contain letters, numbers, and spaces")
-    }
+	if match, _ := regexp.MatchString("^[0-9A-Za-z ]+$", name); !match {
+		return "", fmt.Errorf("The pattern %s can only contain letters, numbers, and spaces")
+	}
 
-    return name, nil
+	return name, nil
 }
-
 
 func extractTypes(args url.Values) ([]string, error) {
 	allowed := map[string]bool{
@@ -174,20 +171,20 @@ func extractTypes(args url.Values) ([]string, error) {
 		"scheme":       true,
 	}
 
-    items, err := extractItems(args, "type", allowed)
+	items, err := extractItems(args, "type", allowed)
 
-    if err != nil {
-            return []string{}, err
-    }
-
-	if len(items) == 0 {
-        return []string{
-		"creature", "land", "enchantment", "sorcery",
-		"instant", "planeswalker", "artifact",
-	    }, nil
+	if err != nil {
+		return []string{}, err
 	}
 
-    return items, nil
+	if len(items) == 0 {
+		return []string{
+			"creature", "land", "enchantment", "sorcery",
+			"instant", "planeswalker", "artifact",
+		}, nil
+	}
+
+	return items, nil
 }
 
 func extractPage(args url.Values) (int, error) {
@@ -345,7 +342,7 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 		err = db.conn.Select(&cards[i].Editions, "SELECT * FROM editions WHERE card_id=$1 ORDER BY eid ASC", cards[i].Id)
 
 		if err != nil {
-                log.Println(err)
+			log.Println(err)
 			continue
 		}
 
@@ -403,20 +400,19 @@ func makeId(c MTGCard) string {
 }
 
 func UniqueToLower(things []string) []string {
-    seen := map[string]bool{}
+	seen := map[string]bool{}
 	sorted := []string{}
 
 	for _, thing := range things {
-        if _, found := seen[thing]; !found {
-		        sorted = append(sorted, strings.ToLower(thing))
-                seen[thing] = true
-        }
+		if _, found := seen[thing]; !found {
+			sorted = append(sorted, strings.ToLower(thing))
+			seen[thing] = true
+		}
 	}
 
 	sort.Strings(sorted)
 	return sorted
 }
-
 
 func normalize(things []string) []string {
 	sorted := []string{}
@@ -476,10 +472,9 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
 	editions := []Edition{}
 	sets := []Set{}
 
-
-    // Denormalize
-    c_rarity := map[string][]string{}
-    c_sets := map[string][]string{}
+	// Denormalize
+	c_rarity := map[string][]string{}
+	c_sets := map[string][]string{}
 
 	for _, set := range collection {
 		sets = append(sets, TransformSet(set))
@@ -493,17 +488,17 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
 				cards = append(cards, newcard)
 			}
 
-            c_sets[newcard.Id] = append(c_sets[newcard.Id], newedition.SetId)
-            c_rarity[newcard.Id] = append(c_rarity[newcard.Id], newedition.Rarity)
+			c_sets[newcard.Id] = append(c_sets[newcard.Id], newedition.SetId)
+			c_rarity[newcard.Id] = append(c_rarity[newcard.Id], newedition.Rarity)
 
 			editions = append(editions, newedition)
 		}
 	}
 
-    for i, c := range cards {
-            cards[i].Sets = UniqueToLower(c_sets[c.Id])
-            cards[i].Rarities = UniqueToLower(c_rarity[c.Id])
-    }
+	for i, c := range cards {
+		cards[i].Sets = UniqueToLower(c_sets[c.Id])
+		cards[i].Rarities = UniqueToLower(c_rarity[c.Id])
+	}
 
 	return sets, cards, editions
 }
