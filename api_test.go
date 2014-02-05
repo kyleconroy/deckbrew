@@ -50,6 +50,10 @@ func TestApi(t *testing.T) {
 		"/mtg/editions/73935",
 		"/mtg/sets",
 		"/mtg/sets/UNH",
+		"/mtg/colors",
+		"/mtg/types",
+		"/mtg/supertypes",
+		"/mtg/subtypes",
 	}
 
 	for _, url := range urls {

@@ -325,6 +325,30 @@ func (db *Database) FetchSet(id string) (Set, error) {
 	return set, nil
 }
 
+type StringRow struct {
+        T string
+}
+
+// SQL Injection possibility! Never call this function with 
+// user defined input
+func (db *Database) FetchTerms(term string) ([]string, error) {
+	types := []StringRow{}
+    result := []string{}
+
+	err := db.conn.Select(&types, "select distinct unnest(" + term + ") as t from cards WHERE NOT sets && '{unh,ugl}' ORDER BY t ASC")
+
+    if err != nil {
+		return result, err
+	}
+
+    for _, row := range types {
+            result = append(result, row.T)
+    }
+
+	return result, nil
+}
+
+
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
 

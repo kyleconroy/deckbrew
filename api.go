@@ -154,6 +154,53 @@ func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []by
 
 	return JSON(http.StatusOK, cards)
 }
+func GetSupertypes(db *Database) (int, []byte) {
+	types, err := db.FetchTerms("supertypes")
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, Errors("Supertypes not found"))
+	}
+
+	return JSON(http.StatusOK, types)
+}
+
+
+func GetColors(db *Database) (int, []byte) {
+	types, err := db.FetchTerms("colors")
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, Errors("Colors not found"))
+	}
+
+	return JSON(http.StatusOK, types)
+}
+
+
+func GetSubtypes(db *Database) (int, []byte) {
+	types, err := db.FetchTerms("subtypes")
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, Errors("Subtypes not found"))
+	}
+
+	return JSON(http.StatusOK, types)
+}
+
+
+func GetTypes(db *Database) (int, []byte) {
+	types, err := db.FetchTerms("types")
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, Errors("Types not found"))
+	}
+
+	return JSON(http.StatusOK, types)
+}
+
 
 func GetSets(db *Database) (int, []byte) {
 	sets, err := db.FetchSets()
@@ -223,7 +270,7 @@ func NewApi(db *Database) *martini.Martini {
 	m.Use(martini.Logger())
 	m.Use(gzip.All())
 	m.Use(func(c martini.Context, w http.ResponseWriter) {
-		w.Header().Set("Content-Type", "application/vnd.deckbrew.beta+json; charset=utf-8")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "public,max-age=3600")
 		w.Header().Set("License", "The textual information presented through this API about Magic: The Gathering is copyrighted by Wizards of the Coast.")
 		w.Header().Set("Disclaimer", "This API is not produced, endorsed, supported, or affiliated with Wizards of the Coast.")
@@ -237,6 +284,10 @@ func NewApi(db *Database) *martini.Martini {
 	r.Get("/mtg/editions/:id", GetEdition)
 	r.Get("/mtg/sets", GetSets)
 	r.Get("/mtg/sets/:id", GetSet)
+	r.Get("/mtg/colors", GetColors)
+	r.Get("/mtg/supertypes", GetSupertypes)
+	r.Get("/mtg/subtypes", GetSubtypes)
+	r.Get("/mtg/types", GetTypes)
 	r.NotFound(NotFound)
 
 	//They can just download the mtgjson dump
