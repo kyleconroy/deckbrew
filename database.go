@@ -2,6 +2,7 @@ package main
 
 import (
         "log"
+        "regexp"
 	"crypto/md5"
 	"fmt"
 	"github.com/jmoiron/sqlx"
@@ -22,6 +23,7 @@ type Query struct {
 	Subtypes   []string
 	Rarity     []string
     Sets []string
+    Name string
 }
 
 func (q *Query) WhereClause() (string, []interface{}) {
@@ -42,6 +44,12 @@ func (q *Query) WhereClause() (string, []interface{}) {
 		query += " AND " + fmt.Sprintf("subtypes && $%d", count)
 		count += 1
 		items = append(items, pgarray(q.Subtypes))
+	}
+
+    if q.Name != "" {
+		query += " AND " + fmt.Sprintf("name ~* $%d", count)
+		count += 1
+		items = append(items, q.Name)
 	}
 
 	if len(q.Supertypes) != 0 {
@@ -134,6 +142,21 @@ func extractSupertypes(args url.Values) ([]string, error) {
     return extractItems(args, "supertype", allowed)
 }
 
+func extractName(args url.Values) (string, error) {
+    name := args.Get("name")
+
+    if name == "" {
+            return "", nil
+    }
+
+    if match, _ := regexp.MatchString("^[0-9A-Za-z ]+$", name); !match {
+            return "", fmt.Errorf("The pattern %s can only contain letters, numbers, and spaces")
+    }
+
+    return name, nil
+}
+
+
 func extractTypes(args url.Values) ([]string, error) {
 	allowed := map[string]bool{
 		"creature":     true,
@@ -218,6 +241,12 @@ func NewQuery(u *url.URL) (Query, error) {
 	}
 
 	q.Colors, err = extractColors(args)
+
+	if err != nil {
+		return q, err
+	}
+
+	q.Name, err = extractName(args)
 
 	if err != nil {
 		return q, err
