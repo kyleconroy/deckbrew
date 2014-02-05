@@ -326,28 +326,27 @@ func (db *Database) FetchSet(id string) (Set, error) {
 }
 
 type StringRow struct {
-        T string
+	T string
 }
 
-// SQL Injection possibility! Never call this function with 
+// SQL Injection possibility! Never call this function with
 // user defined input
 func (db *Database) FetchTerms(term string) ([]string, error) {
 	types := []StringRow{}
-    result := []string{}
+	result := []string{}
 
-	err := db.conn.Select(&types, "select distinct unnest(" + term + ") as t from cards WHERE NOT sets && '{unh,ugl}' ORDER BY t ASC")
+	err := db.conn.Select(&types, "select distinct unnest("+term+") as t from cards WHERE NOT sets && '{unh,ugl}' ORDER BY t ASC")
 
-    if err != nil {
+	if err != nil {
 		return result, err
 	}
 
-    for _, row := range types {
-            result = append(result, row.T)
-    }
+	for _, row := range types {
+		result = append(result, row.T)
+	}
 
 	return result, nil
 }
-
 
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
@@ -529,6 +528,36 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
 
 func CreateStringArray(values []string) string {
 	return "{" + strings.Join(values, ",") + "}"
+}
+
+type Format struct {
+	Sets       []string `json:"sets"`
+	Banned     []string `json:"banned"`
+	Restricted []string `json:"restricted"`
+}
+
+func (f *Format) CardStatus(c *Card) int {
+	for _, id := range f.Restricted {
+		if c.Id == id {
+			return 2
+		}
+	}
+
+	for _, id := range f.Banned {
+		if c.Id == id {
+			return 3
+		}
+	}
+
+	for _, card_set := range c.Sets {
+		for _, format_set := range f.Sets {
+			if format_set == card_set {
+				return 1
+			}
+		}
+	}
+
+	return 0
 }
 
 // Given an array of cards, load them into the database

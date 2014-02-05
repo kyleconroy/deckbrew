@@ -165,7 +165,6 @@ func GetSupertypes(db *Database) (int, []byte) {
 	return JSON(http.StatusOK, types)
 }
 
-
 func GetColors(db *Database) (int, []byte) {
 	types, err := db.FetchTerms("colors")
 
@@ -176,7 +175,6 @@ func GetColors(db *Database) (int, []byte) {
 
 	return JSON(http.StatusOK, types)
 }
-
 
 func GetSubtypes(db *Database) (int, []byte) {
 	types, err := db.FetchTerms("subtypes")
@@ -189,7 +187,6 @@ func GetSubtypes(db *Database) (int, []byte) {
 	return JSON(http.StatusOK, types)
 }
 
-
 func GetTypes(db *Database) (int, []byte) {
 	types, err := db.FetchTerms("types")
 
@@ -200,7 +197,6 @@ func GetTypes(db *Database) (int, []byte) {
 
 	return JSON(http.StatusOK, types)
 }
-
 
 func GetSets(db *Database) (int, []byte) {
 	sets, err := db.FetchSets()

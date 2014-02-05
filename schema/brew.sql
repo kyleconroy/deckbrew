@@ -1,18 +1,24 @@
 CREATE TABLE cards (
-    cid                varchar(32) primary key,
+    cid               varchar(32) primary key,
     name              varchar(200) DEFAULT '',
     mana_cost         varchar(45) DEFAULT '',
     toughness         varchar(6) DEFAULT '',
     power             varchar(6) DEFAULT '',
-    types           varchar(20)[] DEFAULT '{}',
-    rarities           varchar(15)[] DEFAULT '{}',
-    sets           varchar(3)[] DEFAULT '{}',
+    types             varchar(20)[] DEFAULT '{}',
+    rarities          varchar(15)[] DEFAULT '{}',
+    sets              varchar(3)[] DEFAULT '{}',
     subtypes          varchar(100)[] DEFAULT '{}',
     supertypes        varchar(100)[] DEFAULT '{}',
     colors            varchar(5)[] DEFAULT '{}',
     rules             text DEFAULT '',
-    loyalty           integer DEFAULT 0,
-    cmc               integer DEFAULT 0
+    loyalty           smallint DEFAULT 0,
+    cmc               smallint DEFAULT 0,
+    standard          smallint DEFAULT 0,
+    modern            smallint DEFAULT 0,
+    vintage           smallint DEFAULT 0,
+    commander         smallint DEFAULT 0,
+    legacy            smallint DEFAULT 0,
+    classic           smallint DEFAULT 0
 );
 
 CREATE INDEX cards_name_id ON cards(cid);
