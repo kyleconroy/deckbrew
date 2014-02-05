@@ -21,10 +21,11 @@ type Query struct {
 	Colors     []string
 	Subtypes   []string
 	Rarity     []string
+    Sets []string
 }
 
 func (q *Query) WhereClause() (string, []interface{}) {
-	query := ""
+	query := "WHERE "
 	count := 1
 	items := []interface{}{}
 
@@ -33,11 +34,9 @@ func (q *Query) WhereClause() (string, []interface{}) {
 	    return CreateStringArray(strs)
     }
 
-	if len(q.Types) != 0 {
-		query += " AND " + fmt.Sprintf("types && $%d", count)
-		count += 1
-		items = append(items, pgarray(q.Types))
-	}
+    query += fmt.Sprintf("types && $%d", count)
+    count += 1
+    items = append(items, pgarray(q.Types))
 
 	if len(q.Subtypes) != 0 {
 		query += " AND " + fmt.Sprintf("subtypes && $%d", count)
@@ -51,22 +50,16 @@ func (q *Query) WhereClause() (string, []interface{}) {
 		items = append(items, pgarray(q.Supertypes))
 	}
 
+	if len(q.Sets) != 0 {
+		query += " AND " + fmt.Sprintf("sets && $%d", count)
+		count += 1
+		items = append(items, pgarray(q.Sets))
+	}
+
 	if len(q.Rarity) != 0 {
-		query += " AND "
-
-        subquery := ""
-
-        for i, rarity := range q.Rarity {
-                if i > 0 {
-                        subquery += " OR "
-                }
-
-		        subquery += fmt.Sprintf("rarity = $%d", count)
-		        count += 1
-		        items = append(items, rarity)
-        }
-
-        query += "(" + subquery + ")"
+		query += " AND " + fmt.Sprintf("rarities && $%d", count)
+		count += 1
+		items = append(items, pgarray(q.Rarity))
 	}
 
 	if len(q.Colors) != 0 {
@@ -74,7 +67,6 @@ func (q *Query) WhereClause() (string, []interface{}) {
 		count += 1
 		items = append(items, pgarray(q.Colors))
 	}
-
 
 	query += fmt.Sprintf(" ORDER BY name ASC LIMIT 100 OFFSET $%d", count)
 	items = append(items, q.PageOffset())
@@ -231,12 +223,12 @@ func NewQuery(u *url.URL) (Query, error) {
 		return q, err
 	}
 
+	q.Sets = args["set"]
 	q.Rarity, err = extractRarity(args)
 
 	if err != nil {
 		return q, err
 	}
-
 
 	return q, nil
 }
@@ -312,7 +304,7 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 
 	clause, items := q.WhereClause()
 
-	err := db.conn.Select(&cards, "SELECT DISTINCT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards, editions WHERE cid = card_id "+clause, items...)
+	err := db.conn.Select(&cards, "SELECT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards "+clause, items...)
 
 	if err != nil {
 		return cards, err
@@ -381,6 +373,22 @@ func makeId(c MTGCard) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
+func UniqueToLower(things []string) []string {
+    seen := map[string]bool{}
+	sorted := []string{}
+
+	for _, thing := range things {
+        if _, found := seen[thing]; !found {
+		        sorted = append(sorted, strings.ToLower(thing))
+                seen[thing] = true
+        }
+	}
+
+	sort.Strings(sorted)
+	return sorted
+}
+
+
 func normalize(things []string) []string {
 	sorted := []string{}
 	for _, thing := range things {
@@ -439,6 +447,11 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
 	editions := []Edition{}
 	sets := []Set{}
 
+
+    // Denormalize
+    c_rarity := map[string][]string{}
+    c_sets := map[string][]string{}
+
 	for _, set := range collection {
 		sets = append(sets, TransformSet(set))
 
@@ -451,9 +464,18 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
 				cards = append(cards, newcard)
 			}
 
+            c_sets[newcard.Id] = append(c_sets[newcard.Id], newedition.SetId)
+            c_rarity[newcard.Id] = append(c_rarity[newcard.Id], newedition.Rarity)
+
 			editions = append(editions, newedition)
 		}
 	}
+
+    for i, c := range cards {
+            cards[i].Sets = UniqueToLower(c_sets[c.Id])
+            cards[i].Rarities = UniqueToLower(c_rarity[c.Id])
+    }
+
 	return sets, cards, editions
 }
 
@@ -479,7 +501,7 @@ func (db *Database) Load(collection MTGCollection) error {
 
 	for _, c := range cards {
 		// Not sure how to handle failure here
-		_, err := tx.Exec("INSERT INTO cards (cid, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty)
+		_, err := tx.Exec("INSERT INTO cards (cid, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty, rarities, sets) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty, CreateStringArray(c.Rarities), CreateStringArray(c.Sets))
 
 		if err != nil {
 			tx.Rollback()

@@ -36,6 +36,8 @@ type Card struct {
 	Supertypes       []string  `json:"supertypes,omitempty" db:"-"`
 	Subtypes         []string  `json:"subtypes,omitempty" db:"-"`
 	Colors           []string  `json:"colors,omitempty" db:"-"`
+	Rarities         []string  `json:"-" db:"-"`
+	Sets             []string  `json:"-" db:"-"`
 	ConvertedCost    int       `json:"cmc" db:"cmc"`
 	ManaCost         string    `json:"cost" db:"mana_cost"`
 	Text             string    `json:"text" db:"rules"`
@@ -87,8 +89,8 @@ func (e *Edition) Fill() {
 
 type Set struct {
 	Id     string `json:"id"`
-	Name   string `json:"Name"`
-	Border string `json:"Border"`
+	Name   string `json:"name"`
+	Border string `json:"border"`
 	Type   string `json:"type"`
 	Href   string `json:"url" db:"-"`
 }

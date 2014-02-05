@@ -5,6 +5,8 @@ CREATE TABLE cards (
     toughness         varchar(6) DEFAULT '',
     power             varchar(6) DEFAULT '',
     types           varchar(20)[] DEFAULT '{}',
+    rarities           varchar(15)[] DEFAULT '{}',
+    sets           varchar(3)[] DEFAULT '{}',
     subtypes          varchar(100)[] DEFAULT '{}',
     supertypes        varchar(100)[] DEFAULT '{}',
     colors            varchar(5)[] DEFAULT '{}',
@@ -21,6 +23,8 @@ CREATE INDEX cards_types_index ON cards USING GIN(types);
 CREATE INDEX cards_subtypes_index ON cards USING GIN(subtypes);
 CREATE INDEX cards_supertypes_index ON cards USING GIN(supertypes);
 CREATE INDEX cards_colors_index ON cards USING GIN(colors);
+CREATE INDEX cards_sets_index ON cards USING GIN(sets);
+CREATE INDEX cards_rarities_index ON cards USING GIN(rarities);
 
 CREATE TABLE sets (
     id                varchar(3) primary key,
