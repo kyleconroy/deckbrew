@@ -369,7 +369,7 @@ func (db *Database) FetchCard(id string) (Card, error) {
 
 	card.Fill()
 
-	err = db.conn.Select(&card.Editions, "SELECT * FROM editions WHERE card_id=$1 ORDER BY id ASC", card.Id)
+	err = db.conn.Select(&card.Editions, "SELECT * FROM editions WHERE card_id=$1 ORDER BY eid ASC", card.Id)
 
 	if err != nil {
 		return card, err
