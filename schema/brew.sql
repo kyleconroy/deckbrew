@@ -1,5 +1,5 @@
 CREATE TABLE cards (
-    id                varchar(32) primary key,
+    cid                varchar(32) primary key,
     name              varchar(200) DEFAULT '',
     mana_cost         varchar(45) DEFAULT '',
     toughness         varchar(6) DEFAULT '',
@@ -13,6 +13,7 @@ CREATE TABLE cards (
     cmc               integer DEFAULT 0
 );
 
+CREATE INDEX cards_name_id ON cards(cid);
 CREATE INDEX cards_name_index ON cards(name);
 CREATE INDEX cards_power_index ON cards(power);
 CREATE INDEX cards_toughness_index ON cards(toughness);
@@ -29,7 +30,7 @@ CREATE TABLE sets (
 );
 
 CREATE TABLE editions (
-    id                integer DEFAULT 0, 
+    eid                integer DEFAULT 0, 
     card_id           varchar(32) DEFAULT '',
     flavor            text DEFAULT '',
     border            varchar(10) DEFAULT '',
@@ -42,8 +43,9 @@ CREATE TABLE editions (
     rarity            varchar(15) DEFAULT ''
 );
 
-CREATE INDEX editions_id_index ON editions(id);
+CREATE INDEX editions_id_index ON editions(eid);
 CREATE INDEX editions_cardid_index ON editions(card_id);
+CREATE INDEX editions_rarity_index ON editions(rarity);
 
 GRANT ALL PRIVILEGES ON TABLE cards TO urza;
 GRANT ALL PRIVILEGES ON TABLE sets TO urza;

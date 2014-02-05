@@ -1,6 +1,7 @@
 package main
 
 import (
+        "log"
 	"crypto/md5"
 	"fmt"
 	"github.com/jmoiron/sqlx"
@@ -19,10 +20,11 @@ type Query struct {
 	Supertypes []string
 	Colors     []string
 	Subtypes   []string
+	Rarity     []string
 }
 
 func (q *Query) WhereClause() (string, []interface{}) {
-	query := "WHERE "
+	query := ""
 	count := 1
 	items := []interface{}{}
 
@@ -32,37 +34,43 @@ func (q *Query) WhereClause() (string, []interface{}) {
     }
 
 	if len(q.Types) != 0 {
-		query += fmt.Sprintf("types && $%d", count)
+		query += " AND " + fmt.Sprintf("types && $%d", count)
 		count += 1
 		items = append(items, pgarray(q.Types))
 	}
 
 	if len(q.Subtypes) != 0 {
-		if count > 1 {
-			query += " AND "
-		}
-
-		query += fmt.Sprintf("subtypes && $%d", count)
+		query += " AND " + fmt.Sprintf("subtypes && $%d", count)
 		count += 1
 		items = append(items, pgarray(q.Subtypes))
 	}
 
 	if len(q.Supertypes) != 0 {
-		if count > 1 {
-			query += " AND "
-		}
-
-		query += fmt.Sprintf("supertypes && $%d", count)
+		query += " AND " + fmt.Sprintf("supertypes && $%d", count)
 		count += 1
 		items = append(items, pgarray(q.Supertypes))
 	}
 
-	if len(q.Colors) != 0 {
-		if count > 1 {
-			query += " AND "
-		}
+	if len(q.Rarity) != 0 {
+		query += " AND "
 
-		query += fmt.Sprintf("colors && $%d", count)
+        subquery := ""
+
+        for i, rarity := range q.Rarity {
+                if i > 0 {
+                        subquery += " OR "
+                }
+
+		        subquery += fmt.Sprintf("rarity = $%d", count)
+		        count += 1
+		        items = append(items, rarity)
+        }
+
+        query += "(" + subquery + ")"
+	}
+
+	if len(q.Colors) != 0 {
+		query += " AND " + fmt.Sprintf("colors && $%d", count)
 		count += 1
 		items = append(items, pgarray(q.Colors))
 	}
@@ -82,56 +90,60 @@ func extractSubtypes(args url.Values) ([]string, error) {
 	return args["subtype"], nil
 }
 
+
+func extractItems(args url.Values, key string, allowed map[string]bool) ([]string, error) {
+    items := args[key]
+
+	if len(items) == 0 {
+		return []string{}, nil
+	}
+
+	for _, t := range items {
+		if !allowed[t] {
+			return items, fmt.Errorf("The %s '%s' is not recognized", key, t)
+		}
+	}
+
+	return items, nil
+}
+
+func extractRarity(args url.Values) ([]string, error) {
+	allowed := map[string]bool{
+		"common":   true,
+		"uncommon":  true,
+		"rare": true,
+		"mythic rare": true,
+		"special": true,
+		"basic land": true,
+	}
+    return extractItems(args, "rarity", allowed)
+}
+
+
 func extractColors(args url.Values) ([]string, error) {
-	allowedColors := map[string]bool{
+	allowed := map[string]bool{
 		"red":   true,
 		"blue":  true,
 		"green": true,
 		"black": true,
 		"white": true,
 	}
-
-	colors := args["color"]
-
-	if len(colors) == 0 {
-		return []string{}, nil
-	}
-
-	for _, t := range colors {
-		if !allowedColors[t] {
-			return colors, fmt.Errorf("The color '%s' is not recognized", t)
-		}
-	}
-
-	return colors, nil
+    return extractItems(args, "color", allowed)
 }
 
 func extractSupertypes(args url.Values) ([]string, error) {
-	allowedTypes := map[string]bool{
+	allowed := map[string]bool{
 		"legendary": true,
 		"basic":     true,
 		"world":     true,
 		"snow":      true,
 		"ongoing":   true,
 	}
-
-	types := args["supertype"]
-
-	if len(types) == 0 {
-		return []string{}, nil
-	}
-
-	for _, t := range types {
-		if !allowedTypes[t] {
-			return types, fmt.Errorf("The supertype '%s' is not recognized", t)
-		}
-	}
-
-	return types, nil
+    return extractItems(args, "supertype", allowed)
 }
 
 func extractTypes(args url.Values) ([]string, error) {
-	allowedTypes := map[string]bool{
+	allowed := map[string]bool{
 		"creature":     true,
 		"land":         true,
 		"tribal":       true,
@@ -147,24 +159,20 @@ func extractTypes(args url.Values) ([]string, error) {
 		"scheme":       true,
 	}
 
-	defaultTypes := []string{
+    items, err := extractItems(args, "type", allowed)
+
+    if err != nil {
+            return []string{}, err
+    }
+
+	if len(items) == 0 {
+        return []string{
 		"creature", "land", "enchantment", "sorcery",
 		"instant", "planeswalker", "artifact",
+	    }, nil
 	}
 
-	types := args["type"]
-
-	if len(types) == 0 {
-		return defaultTypes, nil
-	}
-
-	for _, t := range types {
-		if !allowedTypes[t] {
-			return types, fmt.Errorf("The type '%s' is not recognized", t)
-		}
-	}
-
-	return types, nil
+    return items, nil
 }
 
 func extractPage(args url.Values) (int, error) {
@@ -223,6 +231,13 @@ func NewQuery(u *url.URL) (Query, error) {
 		return q, err
 	}
 
+	q.Rarity, err = extractRarity(args)
+
+	if err != nil {
+		return q, err
+	}
+
+
 	return q, nil
 }
 
@@ -231,14 +246,14 @@ type Database struct {
 }
 
 func (db *Database) ScanCard(c *Card, id string) error {
-	return db.conn.Get(c, "SELECT name, id, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards WHERE id=$1", id)
+	return db.conn.Get(c, "SELECT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards WHERE cid=$1", id)
 }
 
 func (db *Database) FetchEditions(id string) ([]Card, error) {
 	editions := []Edition{}
 	cards := []Card{}
 
-	err := db.conn.Select(&editions, "SELECT * FROM editions WHERE id=$1 ORDER BY id ASC", id)
+	err := db.conn.Select(&editions, "SELECT * FROM editions WHERE eid=$1 ORDER BY eid ASC", id)
 
 	if err != nil {
 		return cards, err
@@ -297,7 +312,7 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 
 	clause, items := q.WhereClause()
 
-	err := db.conn.Select(&cards, "SELECT name, id, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards "+clause, items...)
+	err := db.conn.Select(&cards, "SELECT DISTINCT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards, editions WHERE cid = card_id "+clause, items...)
 
 	if err != nil {
 		return cards, err
@@ -306,9 +321,10 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 	for i, _ := range cards {
 		cards[i].Fill()
 
-		err = db.conn.Select(&cards[i].Editions, "SELECT * FROM editions WHERE card_id=$1 ORDER BY id ASC", cards[i].Id)
+		err = db.conn.Select(&cards[i].Editions, "SELECT * FROM editions WHERE card_id=$1 ORDER BY eid ASC", cards[i].Id)
 
 		if err != nil {
+                log.Println(err)
 			continue
 		}
 
@@ -463,7 +479,7 @@ func (db *Database) Load(collection MTGCollection) error {
 
 	for _, c := range cards {
 		// Not sure how to handle failure here
-		_, err := tx.Exec("INSERT INTO cards (id, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty)
+		_, err := tx.Exec("INSERT INTO cards (cid, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty)
 
 		if err != nil {
 			tx.Rollback()
@@ -474,7 +490,7 @@ func (db *Database) Load(collection MTGCollection) error {
 
 	for _, edition := range editions {
 		// Not sure how to handle failure here
-		_, err := tx.NamedExec("INSERT INTO editions (id, card_id, set_name, watermark, rarity, border, artist, flavor, set_number, layout, set_id) VALUES (:id, :card_id, :set_name, :watermark, :rarity, :border, :artist, :flavor, :set_number, :layout, :set_id)", &edition)
+		_, err := tx.NamedExec("INSERT INTO editions (eid, card_id, set_name, watermark, rarity, border, artist, flavor, set_number, layout, set_id) VALUES (:eid, :card_id, :set_name, :watermark, :rarity, :border, :artist, :flavor, :set_number, :layout, :set_id)", &edition)
 
 		if err != nil {
 			tx.Rollback()

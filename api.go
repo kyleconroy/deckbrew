@@ -27,7 +27,7 @@ func GetHostname() string {
 // Import this eventually
 type Card struct {
 	Name             string    `json:"name" db:"name"`
-	Id               string    `json:"id" db:"id"`
+	Id               string    `json:"id" db:"cid"`
 	JoinedTypes      string    `json:"-" db:"types"`
 	JoinedSupertypes string    `json:"-" db:"supertypes"`
 	JoinedSubtypes   string    `json:"-" db:"subtypes"`
@@ -70,7 +70,7 @@ type Edition struct {
 	Rarity       string `json:"rarity"`
 	Border       string `json:"-"`
 	Artist       string `json:"artist"`
-	MultiverseId int    `json:"multiverse_id" db:"id"`
+	MultiverseId int    `json:"multiverse_id" db:"eid"`
 	Flavor       string `json:"flavor,omitempty"`
 	Number       string `json:"number" db:"set_number"`
 	Layout       string `json:"layout"`
