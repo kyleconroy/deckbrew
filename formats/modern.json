@@ -1,0 +1,42 @@
+{
+  "sets": [
+    "8ed", "mrd", "dst", "5dn", "chk", "bok", "sok", 
+    "9ed", "rav", "gpt", "dis", "csp", "tsp", "plc", 
+    "fut", "10e", "lrw", "mor", "shm", "eve", "ala", 
+    "con", "arb", "m10", "zen", "wwk", "roe", "m11", 
+    "som", "mbs", "nph", "m12", "isd", "drk", "avr",
+    "m13", "rtr", "gtc", "dgm", "m14", "ths", "bng"
+  ],
+  "banned": [
+    {"id": "2d8259d9ad0ba2676958661ebd470baf", "name": "Ancestral Vision"},
+    {"id": "e21eef32a0e51823d24ecd11d2ee721f", "name": "Ancient Den"},
+    {"id": "9478b7cd792b6e0d6aa3a6e474916416", "name": "Blazing Shoal"},
+    {"id": "ba24ab061c8427eae560496d59c70e40", "name": "Bloodbraid Elf"},
+    {"id": "f7910155d4f0e61a0eaa4c94d3adf44b", "name": "Chrome Mox"},
+    {"id": "f02428461502dd62d77cfac31952981a", "name": "Cloudpost"},
+    {"id": "356f407041959913b59ab35f9fe803aa", "name": "Dark Depths"},
+    {"id": "456e79510dce8c0478a38b87670525a0", "name": "Deathrite Shaman"},
+    {"id": "e85a206d8490e5de6bfcc40d0ee23ecc", "name": "Dread Return"},
+    {"id": "5bfeee9fd45bf8f34061f4f327f234cb", "name": "Glimpse of Nature"},
+    {"id": "b2c35cfaf5596fa56bc2ae059826fef8", "name": "Golgari Grave-Troll"},
+    {"id": "a6df681b57c93da7d00da494ac20b3bf", "name": "Great Furnace"},
+    {"id": "eafb51e3ed360087aa1e4420e1d7aa9e", "name": "Green Sun's Zenith"},
+    {"id": "df07763e0dd1d4a894e971cd02b801f8", "name": "Hypergenesis"},
+    {"id": "2b424b8ad5806958a8aad622fb4f6043", "name": "Jace, the Mind Sculptor"},
+    {"id": "84a6c764daa4327ab2a48466b7f12f24", "name": "Mental Misstep"},
+    {"id": "a0d0ae67c63246f01c07e622d158337d", "name": "Ponder"},
+    {"id": "543cb5da422eb3182edcac5612412f7b", "name": "Preordain"},
+    {"id": "dee02c459c11f4f9d8eeefcd8d06ad29", "name": "Punishing Fire"},
+    {"id": "cc9d6b4886060ebb1af23d88e2924bba", "name": "Rite of Flame"},
+    {"id": "cc78dcd29aeb676843c135ec1ddcaea4", "name": "Seat of the Synod"},
+    {"id": "af933901288cabdd4b207b5ffb511c3a", "name": "Second Sunrise"},
+    {"id": "9c3d28e0d4b844f7c8f0e16f6bd748df", "name": "Seething Song"},
+    {"id": "52c93910bb228cf7d2241846dbf49156", "name": "Sensei's Divining Top"},
+    {"id": "8be728340d314a8b634ad3892406bce0", "name": "Stoneforge Mystic"},
+    {"id": "43820a1126952abe4c08ac55a926d13b", "name": "Skullclamp"},
+    {"id": "020c8234337ad304a3a9cb045220286a", "name": "Sword of the Meek"},
+    {"id": "7c68b990b45db7e5e63e6505c10aadc5", "name": "Tree of Tales"},
+    {"id": "6aeafc9855cf80cca62a4b7b07cabc70", "name": "Umezawa's Jitte"},
+    {"id": "f93ba47406d6e4d71f6ee04985021ff6", "name": "Vault of Whispers"}
+  ]
+}

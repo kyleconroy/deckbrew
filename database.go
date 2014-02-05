@@ -530,24 +530,28 @@ func CreateStringArray(values []string) string {
 	return "{" + strings.Join(values, ",") + "}"
 }
 
-type Format struct {
-	Sets       []string `json:"sets"`
-	Banned     []string `json:"banned"`
-	Restricted []string `json:"restricted"`
-}
-
 func (f *Format) CardStatus(c *Card) int {
-	for _, id := range f.Restricted {
-		if c.Id == id {
+	for _, card_set := range c.Sets {
+        if card_set == "unh" || card_set == "ugl" {
+                return 0
+        }
+	}
+
+	for _, b := range f.Banned {
+		if c.Id == b.Id {
+			return 3
+		}
+	}
+
+	for _, r := range f.Restricted {
+		if c.Id == r.Id {
 			return 2
 		}
 	}
 
-	for _, id := range f.Banned {
-		if c.Id == id {
-			return 3
-		}
-	}
+    if len(f.Sets) == 0 {
+            return 1
+    }
 
 	for _, card_set := range c.Sets {
 		for _, format_set := range f.Sets {
@@ -566,6 +570,18 @@ func (db *Database) Load(collection MTGCollection) error {
 
 	sets, cards, editions := TransformCollection(collection)
 
+    modern, err := LoadFormat("formats/modern.json")
+
+    if err != nil {
+            return err
+    }
+
+    standard, err := LoadFormat("formats/standard.json")
+
+    if err != nil {
+            return err
+    }
+
 	for _, set := range sets {
 		// Not sure how to handle failure here
 		_, err := tx.NamedExec("INSERT INTO sets (id, name, border, type) VALUES (:id, :name, :border, :type)", &set)
@@ -578,7 +594,7 @@ func (db *Database) Load(collection MTGCollection) error {
 
 	for _, c := range cards {
 		// Not sure how to handle failure here
-		_, err := tx.Exec("INSERT INTO cards (cid, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty, rarities, sets) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty, CreateStringArray(c.Rarities), CreateStringArray(c.Sets))
+		_, err := tx.Exec("INSERT INTO cards (cid, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty, rarities, sets, modern, standard) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty, CreateStringArray(c.Rarities), CreateStringArray(c.Sets), modern.CardStatus(&c), standard.CardStatus(&c))
 
 		if err != nil {
 			tx.Rollback()

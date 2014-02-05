@@ -11,8 +11,8 @@ CREATE TABLE cards (
     supertypes        varchar(100)[] DEFAULT '{}',
     colors            varchar(5)[] DEFAULT '{}',
     rules             text DEFAULT '',
-    loyalty           smallint DEFAULT 0,
-    cmc               smallint DEFAULT 0,
+    loyalty           integer DEFAULT 0,
+    cmc               integer DEFAULT 0,
     standard          smallint DEFAULT 0,
     modern            smallint DEFAULT 0,
     vintage           smallint DEFAULT 0,
@@ -31,6 +31,14 @@ CREATE INDEX cards_supertypes_index ON cards USING GIN(supertypes);
 CREATE INDEX cards_colors_index ON cards USING GIN(colors);
 CREATE INDEX cards_sets_index ON cards USING GIN(sets);
 CREATE INDEX cards_rarities_index ON cards USING GIN(rarities);
+
+
+CREATE INDEX cards_modern_index ON cards(modern);
+CREATE INDEX cards_standard_index ON cards(standard);
+CREATE INDEX cards_vintage_index ON cards(vintage);
+CREATE INDEX cards_legacy_index ON cards(legacy);
+CREATE INDEX cards_classic_index ON cards(classic);
+CREATE INDEX cards_commander_index ON cards(commander);
 
 CREATE TABLE sets (
     id                varchar(3) primary key,

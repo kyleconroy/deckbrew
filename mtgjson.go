@@ -57,6 +57,28 @@ type MTGRuling struct {
 	Text string `json:"text"`
 }
 
+type Format struct {
+	Sets       []string `json:"sets"`
+	Banned     []Card `json:"banned"`
+	Restricted []Card `json:"restricted"`
+}
+
+func LoadFormat(path string) (Format, error) {
+	blob, err := ioutil.ReadFile(path)
+
+	if err != nil {
+		return Format{}, err
+	}
+
+	var format Format
+	err = json.Unmarshal(blob, &format)
+
+	if err != nil {
+		return Format{}, err
+	}
+	return format, nil
+}
+
 func LoadCollection(path string) (MTGCollection, error) {
 	blob, err := ioutil.ReadFile(path)
 

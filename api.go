@@ -46,6 +46,12 @@ type Card struct {
 	Loyalty          int       `json:"loyalty,omitempty" db:"loyalty"`
 	Href             string    `json:"url,omitempty"`
 	Editions         []Edition `json:"editions,omitempty"`
+    Standard         int
+    Commander         int
+    Modern int
+    Legacy int
+    Vintage int
+    Classic int
 }
 
 func explode(types string) []string {
