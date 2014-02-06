@@ -59,8 +59,8 @@ type MTGRuling struct {
 
 type Format struct {
 	Sets       []string `json:"sets"`
-	Banned     []Card `json:"banned"`
-	Restricted []Card `json:"restricted"`
+	Banned     []Card   `json:"banned"`
+	Restricted []Card   `json:"restricted"`
 }
 
 func LoadFormat(path string) (Format, error) {

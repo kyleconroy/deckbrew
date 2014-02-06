@@ -26,32 +26,33 @@ func GetHostname() string {
 
 // Import this eventually
 type Card struct {
-	Name             string    `json:"name" db:"name"`
-	Id               string    `json:"id" db:"cid"`
-	JoinedTypes      string    `json:"-" db:"types"`
-	JoinedSupertypes string    `json:"-" db:"supertypes"`
-	JoinedSubtypes   string    `json:"-" db:"subtypes"`
-	JoinedColors     string    `json:"-" db:"colors"`
-	Types            []string  `json:"types,omitempty" db:"-"`
-	Supertypes       []string  `json:"supertypes,omitempty" db:"-"`
-	Subtypes         []string  `json:"subtypes,omitempty" db:"-"`
-	Colors           []string  `json:"colors,omitempty" db:"-"`
-	Rarities         []string  `json:"-" db:"-"`
-	Sets             []string  `json:"-" db:"-"`
-	ConvertedCost    int       `json:"cmc" db:"cmc"`
-	ManaCost         string    `json:"cost" db:"mana_cost"`
-	Text             string    `json:"text" db:"rules"`
-	Power            string    `json:"power,omitempty" db:"power"`
-	Toughness        string    `json:"toughness,omitempty" db:"toughness"`
-	Loyalty          int       `json:"loyalty,omitempty" db:"loyalty"`
-	Href             string    `json:"url,omitempty"`
-	Editions         []Edition `json:"editions,omitempty"`
-    Standard         int
-    Commander         int
-    Modern int
-    Legacy int
-    Vintage int
-    Classic int
+	Name             string            `json:"name" db:"name"`
+	Id               string            `json:"id" db:"cid"`
+	Href             string            `json:"url,omitempty"`
+	JoinedTypes      string            `json:"-" db:"types"`
+	JoinedSupertypes string            `json:"-" db:"supertypes"`
+	JoinedSubtypes   string            `json:"-" db:"subtypes"`
+	JoinedColors     string            `json:"-" db:"colors"`
+	Types            []string          `json:"types,omitempty" db:"-"`
+	Supertypes       []string          `json:"supertypes,omitempty" db:"-"`
+	Subtypes         []string          `json:"subtypes,omitempty" db:"-"`
+	Colors           []string          `json:"colors,omitempty" db:"-"`
+	Rarities         []string          `json:"-" db:"-"`
+	Sets             []string          `json:"-" db:"-"`
+	ConvertedCost    int               `json:"cmc" db:"cmc"`
+	ManaCost         string            `json:"cost" db:"mana_cost"`
+	Text             string            `json:"text" db:"rules"`
+	Power            string            `json:"power,omitempty" db:"power"`
+	Toughness        string            `json:"toughness,omitempty" db:"toughness"`
+	Loyalty          int               `json:"loyalty,omitempty" db:"loyalty"`
+	Standard         int               `json:"-"`
+	Commander        int               `json:"-"`
+	Modern           int               `json:"-"`
+	Legacy           int               `json:"-"`
+	Vintage          int               `json:"-"`
+	Classic          int               `json:"-"`
+	Formats          map[string]string `json:"formats" db:"-"`
+	Editions         []Edition         `json:"editions,omitempty"`
 }
 
 func explode(types string) []string {
@@ -62,12 +63,34 @@ func explode(types string) []string {
 	}
 }
 
+func (c *Card) fillFormat(format string, legal int) {
+	formats := map[int]string{
+		1: "legal",
+		2: "restricted",
+		3: "banned",
+	}
+
+	if c.Formats == nil {
+		c.Formats = map[string]string{}
+	}
+
+	if legal > 0 && legal < 4 {
+		c.Formats[format] = formats[legal]
+	}
+}
+
 func (c *Card) Fill() {
 	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
 	c.Types = explode(c.JoinedTypes)
 	c.Supertypes = explode(c.JoinedSupertypes)
 	c.Subtypes = explode(c.JoinedSubtypes)
 	c.Colors = explode(c.JoinedColors)
+
+	c.fillFormat("vintage", c.Vintage)
+	c.fillFormat("legacy", c.Legacy)
+	c.fillFormat("commander", c.Commander)
+	c.fillFormat("modern", c.Modern)
+	c.fillFormat("standard", c.Standard)
 }
 
 type Edition struct {

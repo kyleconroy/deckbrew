@@ -24,6 +24,11 @@ type Query struct {
 	Rarity     []string
 	Sets       []string
 	Name       string
+	Commander  int
+	Standard   int
+	Modern     int
+	Legacy     int
+	Vintage    int
 }
 
 func (q *Query) WhereClause() (string, []interface{}) {
@@ -76,6 +81,36 @@ func (q *Query) WhereClause() (string, []interface{}) {
 		items = append(items, pgarray(q.Colors))
 	}
 
+	if q.Standard > 0 {
+		query += " AND " + fmt.Sprintf("standard = $%d", count)
+		count += 1
+		items = append(items, q.Standard)
+	}
+
+	if q.Legacy > 0 {
+		query += " AND " + fmt.Sprintf("legacy = $%d", count)
+		count += 1
+		items = append(items, q.Legacy)
+	}
+
+	if q.Modern > 0 {
+		query += " AND " + fmt.Sprintf("modern = $%d", count)
+		count += 1
+		items = append(items, q.Modern)
+	}
+
+	if q.Vintage > 0 {
+		query += " AND " + fmt.Sprintf("vintage = $%d", count)
+		count += 1
+		items = append(items, q.Vintage)
+	}
+
+	if q.Commander > 0 {
+		query += " AND " + fmt.Sprintf("commander = $%d", count)
+		count += 1
+		items = append(items, q.Commander)
+	}
+
 	query += fmt.Sprintf(" ORDER BY name ASC LIMIT 100 OFFSET $%d", count)
 	items = append(items, q.PageOffset())
 
@@ -88,6 +123,29 @@ func (q *Query) PageOffset() int {
 
 func extractSubtypes(args url.Values) ([]string, error) {
 	return args["subtype"], nil
+}
+
+func extractLegal(args url.Values, key string) (int, error) {
+	allowed := map[string]int{
+		"legal":  1,
+		"banned": 3,
+	}
+
+	if key == "vintage" {
+		allowed["restrcited"] = 2
+	}
+
+	item := args.Get(key)
+
+	if item == "" {
+		return 0, nil
+	}
+
+	if _, found := allowed[item]; !found {
+		return 0, fmt.Errorf("The %s format doesn't supprt %s", key, item)
+	}
+
+	return allowed[item], nil
 }
 
 func extractItems(args url.Values, key string, allowed map[string]bool) ([]string, error) {
@@ -147,8 +205,8 @@ func extractName(args url.Values) (string, error) {
 		return "", nil
 	}
 
-	if match, _ := regexp.MatchString("^[0-9A-Za-z ]+$", name); !match {
-		return "", fmt.Errorf("The pattern %s can only contain letters, numbers, and spaces")
+	if match, _ := regexp.MatchString("^[0-9A-Za-z,' ]+$", name); !match {
+		return "", fmt.Errorf("The pattern %s can only contain letters, numbers, commas, single quotes and spaces")
 	}
 
 	return name, nil
@@ -249,6 +307,36 @@ func NewQuery(u *url.URL) (Query, error) {
 		return q, err
 	}
 
+	q.Modern, err = extractLegal(args, "modern")
+
+	if err != nil {
+		return q, err
+	}
+
+	q.Commander, err = extractLegal(args, "commander")
+
+	if err != nil {
+		return q, err
+	}
+
+	q.Vintage, err = extractLegal(args, "vintage")
+
+	if err != nil {
+		return q, err
+	}
+
+	q.Legacy, err = extractLegal(args, "legacy")
+
+	if err != nil {
+		return q, err
+	}
+
+	q.Standard, err = extractLegal(args, "standard")
+
+	if err != nil {
+		return q, err
+	}
+
 	q.Sets = args["set"]
 	q.Rarity, err = extractRarity(args)
 
@@ -264,7 +352,7 @@ type Database struct {
 }
 
 func (db *Database) ScanCard(c *Card, id string) error {
-	return db.conn.Get(c, "SELECT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards WHERE cid=$1", id)
+	return db.conn.Get(c, "SELECT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules, standard, modern, commander, vintage, legacy FROM cards WHERE cid=$1", id)
 }
 
 func (db *Database) FetchEditions(id string) ([]Card, error) {
@@ -353,7 +441,7 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 
 	clause, items := q.WhereClause()
 
-	err := db.conn.Select(&cards, "SELECT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules FROM cards "+clause, items...)
+	err := db.conn.Select(&cards, "SELECT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules, standard, modern, legacy, vintage, commander FROM cards "+clause, items...)
 
 	if err != nil {
 		return cards, err
@@ -532,9 +620,9 @@ func CreateStringArray(values []string) string {
 
 func (f *Format) CardStatus(c *Card) int {
 	for _, card_set := range c.Sets {
-        if card_set == "unh" || card_set == "ugl" {
-                return 0
-        }
+		if card_set == "unh" || card_set == "ugl" {
+			return 0
+		}
 	}
 
 	for _, b := range f.Banned {
@@ -549,9 +637,9 @@ func (f *Format) CardStatus(c *Card) int {
 		}
 	}
 
-    if len(f.Sets) == 0 {
-            return 1
-    }
+	if len(f.Sets) == 0 {
+		return 1
+	}
 
 	for _, card_set := range c.Sets {
 		for _, format_set := range f.Sets {
@@ -570,17 +658,35 @@ func (db *Database) Load(collection MTGCollection) error {
 
 	sets, cards, editions := TransformCollection(collection)
 
-    modern, err := LoadFormat("formats/modern.json")
+	modern, err := LoadFormat("formats/modern.json")
 
-    if err != nil {
-            return err
-    }
+	if err != nil {
+		return err
+	}
 
-    standard, err := LoadFormat("formats/standard.json")
+	standard, err := LoadFormat("formats/standard.json")
 
-    if err != nil {
-            return err
-    }
+	if err != nil {
+		return err
+	}
+
+	vintage, err := LoadFormat("formats/vintage.json")
+
+	if err != nil {
+		return err
+	}
+
+	legacy, err := LoadFormat("formats/legacy.json")
+
+	if err != nil {
+		return err
+	}
+
+	commander, err := LoadFormat("formats/commander.json")
+
+	if err != nil {
+		return err
+	}
 
 	for _, set := range sets {
 		// Not sure how to handle failure here
@@ -594,7 +700,7 @@ func (db *Database) Load(collection MTGCollection) error {
 
 	for _, c := range cards {
 		// Not sure how to handle failure here
-		_, err := tx.Exec("INSERT INTO cards (cid, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty, rarities, sets, modern, standard) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty, CreateStringArray(c.Rarities), CreateStringArray(c.Sets), modern.CardStatus(&c), standard.CardStatus(&c))
+		_, err := tx.Exec("INSERT INTO cards (cid, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty, rarities, sets, modern, standard, vintage, legacy, commander) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty, CreateStringArray(c.Rarities), CreateStringArray(c.Sets), modern.CardStatus(&c), standard.CardStatus(&c), vintage.CardStatus(&c), legacy.CardStatus(&c), commander.CardStatus(&c))
 
 		if err != nil {
 			tx.Rollback()
