@@ -27,6 +27,7 @@ deckbrew: Makefile *.go schema/*.sql
 	mkdir -p deckbrew
 	cp *.go deckbrew
 	cp -r schema deckbrew
+	cp -r formats deckbrew
 	cp Makefile deckbrew
 
 
