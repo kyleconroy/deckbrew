@@ -297,6 +297,7 @@ func NewApi(db *Database) *martini.Martini {
 	m.Use(func(c martini.Context, w http.ResponseWriter) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "public,max-age=3600")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("License", "The textual information presented through this API about Magic: The Gathering is copyrighted by Wizards of the Coast.")
 		w.Header().Set("Disclaimer", "This API is not produced, endorsed, supported, or affiliated with Wizards of the Coast.")
 	})
