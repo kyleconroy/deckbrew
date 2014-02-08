@@ -24,11 +24,8 @@ type Query struct {
 	Rarity     []string
 	Sets       []string
 	Name       string
-	Commander  int
-	Standard   int
-	Modern     int
-	Legacy     int
-	Vintage    int
+	Formats  []string
+	Status   []int
 }
 
 func (q *Query) WhereClause() (string, []interface{}) {
@@ -81,35 +78,26 @@ func (q *Query) WhereClause() (string, []interface{}) {
 		items = append(items, pgarray(q.Colors))
 	}
 
-	if q.Standard > 0 {
-		query += " AND " + fmt.Sprintf("standard = $%d", count)
-		count += 1
-		items = append(items, q.Standard)
-	}
-
-	if q.Legacy > 0 {
-		query += " AND " + fmt.Sprintf("legacy = $%d", count)
-		count += 1
-		items = append(items, q.Legacy)
-	}
-
-	if q.Modern > 0 {
-		query += " AND " + fmt.Sprintf("modern = $%d", count)
-		count += 1
-		items = append(items, q.Modern)
-	}
-
-	if q.Vintage > 0 {
-		query += " AND " + fmt.Sprintf("vintage = $%d", count)
-		count += 1
-		items = append(items, q.Vintage)
-	}
-
-	if q.Commander > 0 {
-		query += " AND " + fmt.Sprintf("commander = $%d", count)
-		count += 1
-		items = append(items, q.Commander)
-	}
+	//if len(q.Formats) > 0 && len(q.Status) > 0 {
+	//} else if len(q.Formats) > 0 && len(q.Status) == 0 {
+    //    for _, format := range q.Formats {
+    //        // FIXME: Unsafe sql operation
+	//	    query += " AND " + fmt.Sprintf("%s > $%d", format, count)
+	//	    count += 1
+	//	    items = append(items, 0)
+    //    }
+	//} else if len(q.Formats) == 0 && len(q.Status) > 0 {
+    //    formats := []string{"commander", "vintage", "legacy", "standard", "modern"}
+    //    subquery := "()"
+    //    for _, status := range q.Status {
+    //    for _, format := range formats {
+    //        // FIXME: Unsafe sql operation
+	//	    query += " AND " + fmt.Sprintf("%s > $%d", format, count)
+	//	    count += 1
+	//	    items = append(items, 0)
+    //    }
+    //    query += " AND (" + subquery + ")"
+	//}
 
 	query += fmt.Sprintf(" ORDER BY name ASC LIMIT 100 OFFSET $%d", count)
 	items = append(items, q.PageOffset())
@@ -148,6 +136,25 @@ func extractLegal(args url.Values, key string) (int, error) {
 	return allowed[item], nil
 }
 
+func extractInts(args url.Values, key string, allowed map[string]int) ([]int, error) {
+	items := args[key]
+	ints := []int{}
+
+	if len(items) == 0 {
+		return []int{}, nil
+	}
+
+	for _, t := range items {
+		if allowed[t] == 0 {
+			return ints, fmt.Errorf("The %s '%s' is not recognized", key, t)
+		}
+        ints = append(ints, allowed[t])
+	}
+
+	return ints, nil
+}
+
+
 func extractItems(args url.Values, key string, allowed map[string]bool) ([]string, error) {
 	items := args[key]
 
@@ -185,6 +192,27 @@ func extractColors(args url.Values) ([]string, error) {
 		"white": true,
 	}
 	return extractItems(args, "color", allowed)
+}
+
+func extractStatus(args url.Values) ([]int, error) {
+	allowed := map[string]int{
+		"legal": 1,
+		"restricted":     2,
+		"banned":     3,
+	}
+	return extractInts(args, "status", allowed)
+}
+
+
+func extractFormats(args url.Values) ([]string, error) {
+	allowed := map[string]bool{
+		"vintage": true,
+		"commander":     true,
+		"standard":     true,
+		"legacy":      true,
+		"modern":   true,
+	}
+	return extractItems(args, "format", allowed)
 }
 
 func extractSupertypes(args url.Values) ([]string, error) {
@@ -307,31 +335,13 @@ func NewQuery(u *url.URL) (Query, error) {
 		return q, err
 	}
 
-	q.Modern, err = extractLegal(args, "modern")
+	q.Formats, err = extractFormats(args)
 
 	if err != nil {
 		return q, err
 	}
 
-	q.Commander, err = extractLegal(args, "commander")
-
-	if err != nil {
-		return q, err
-	}
-
-	q.Vintage, err = extractLegal(args, "vintage")
-
-	if err != nil {
-		return q, err
-	}
-
-	q.Legacy, err = extractLegal(args, "legacy")
-
-	if err != nil {
-		return q, err
-	}
-
-	q.Standard, err = extractLegal(args, "standard")
+	q.Status, err = extractStatus(args)
 
 	if err != nil {
 		return q, err
