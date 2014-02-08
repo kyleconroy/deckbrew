@@ -2,6 +2,7 @@ package main
 
 import (
         "strings"
+        "strconv"
         "fmt"
 )
 
@@ -21,6 +22,8 @@ type Expression struct {
         Fields []string
         Tables []string
         Action string
+        limit int
+        offset int
         Condition Condition
 }
 
@@ -103,6 +106,17 @@ func (e Expression) Where(cond Condition) Expression {
         return e
 }
 
+func (e Expression) Offset(count int) Expression {
+        e.offset = count
+        return e
+}
+
+func (e Expression) Limit(count int) Expression {
+        e.limit = count
+        return e
+}
+
+
 func (e Expression) ToSql() (string, []interface{}, error) {
         params := []interface{}{}
         if len(e.Fields) == 0 {
@@ -130,12 +144,19 @@ func (e Expression) ToSql() (string, []interface{}, error) {
                 }
         }
 
+        if e.limit != 0 {
+                sql = sql + " LIMIT " + strconv.Itoa(e.limit)
+        }
+
+        if e.offset != 0 {
+                sql = sql + " OFFSET " + strconv.Itoa(e.offset)
+        }
+
         counts := []interface{}{}
 
         for i, _ := range params {
                 counts = append(counts, i + 1)
         }
-
         sql = fmt.Sprintf(sql, counts...)
 
         return sql, params, nil
