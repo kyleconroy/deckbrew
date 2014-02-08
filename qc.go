@@ -62,7 +62,7 @@ func (m multicompare) ToSql() (string, []interface{}, error) {
             }
         }
 
-        return query, args, nil
+        return "(" + query + ")", args, nil
 }
 
 func And(conds ...Condition) Condition {

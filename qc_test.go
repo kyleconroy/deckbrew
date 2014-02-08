@@ -14,7 +14,7 @@ func TestSelect(t *testing.T) {
                 t.Fatal(err)
         }
 
-        if sql != "SELECT * FROM users WHERE foo = $1 AND bar = $2" {
+        if sql != "SELECT * FROM users WHERE (foo = $1 AND bar = $2)" {
                 t.Errorf("Malformed SQL: %s", sql)
         }
 
