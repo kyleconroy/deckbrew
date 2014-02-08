@@ -35,12 +35,42 @@ func (c comparison) ToSql() (string, []interface{}, error) {
         return sql, []interface{}{c.val}, nil
 }
 
+type multicompare struct {
+        operator string
+        comparisons []Condition
+}
+
+func (m multicompare) ToSql() (string, []interface{}, error) {
+        args := []interface{}{}
+        query := ""
+
+        for _, comp := range m.comparisons {
+            subquery, subargs, err := comp.ToSql()
+
+            if err != nil {
+                    return query, args, err
+            }
+
+            for _, a := range subargs {
+                    args = append(args, a)
+            }
+
+            if query == "" {
+                    query = subquery
+            } else {
+                    query = query + " AND " + subquery
+            }
+        }
+
+        return query, args, nil
+}
+
 func And(conds ...Condition) Condition {
-        return comparison{}
+        return multicompare{operator: "AND", comparisons: conds}
 }
 
 func Or(conds ...Condition) Condition {
-        return comparison{}
+        return multicompare{operator: "OR", comparisons: conds}
 }
 
 func Eq(column string, val interface{}) Condition {
@@ -48,19 +78,19 @@ func Eq(column string, val interface{}) Condition {
 }
 
 func Gt(column string, val interface{}) Condition {
-        return comparison{}
+        return comparison{column: column, operator: ">", val: val}
 }
 
 func Lt(column string, val interface{}) Condition {
-        return comparison{}
+        return comparison{column: column, operator: "<", val: val}
 }
 
 func Gte(column string, val interface{}) Condition {
-        return comparison{}
+        return comparison{column: column, operator: ">=", val: val}
 }
 
 func Lte(column string, val interface{}) Condition {
-        return comparison{}
+        return comparison{column: column, operator: "<=", val: val}
 }
 
 func (e Expression) From(table ...string) Expression {
