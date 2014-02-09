@@ -34,13 +34,15 @@ type Card struct {
 	Supertypes    []string          `json:"supertypes,omitempty"`
 	Subtypes      []string          `json:"subtypes,omitempty"`
 	Colors        []string          `json:"colors,omitempty"`
+	Formats       []string          `json:"-"`
+	Status        []string          `json:"-"`
+	FormatMap     map[string]string `json:"formats"`
 	ConvertedCost int               `json:"cmc"`
 	ManaCost      string            `json:"cost"`
 	Text          string            `json:"text"`
 	Power         string            `json:"power,omitempty"`
 	Toughness     string            `json:"toughness,omitempty"`
 	Loyalty       int               `json:"loyalty,omitempty"`
-	Formats       map[string]string `json:"formats"`
 	Editions      []Edition         `json:"editions,omitempty"`
 }
 

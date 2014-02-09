@@ -7,14 +7,14 @@ deps:
 	go get -d -v ./...
 
 
-serve:
-	DECKBREW_HOSTNAME="http://localhost:3000" go run mtgjson.go etl.go api.go search.go
+serve: brewapi
+	DECKBREW_HOSTNAME="http://localhost:3000" ./brewapi
 
 test: cards.json 
 	go test -v
 
-syncdb: cards.json 
-	go run mtgjson.go etl.go api.go search.go load cards.json
+syncdb: brewapi cards.json 
+	./brewapi load cards.json
 
 ami: deckbrew
 	packer build template.json

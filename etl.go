@@ -106,11 +106,70 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
 	return sets, cards, editions
 }
 
+func AddFormat(c *Card, f *MTGFormat) {
+	if c.FormatMap == nil {
+		c.FormatMap = map[string]string{}
+	}
+
+	update := func(cd *Card, set, status string) {
+		cd.FormatMap[set] = status
+		cd.Formats = ToUniqueLower(append(c.Formats, set))
+		cd.Status = ToUniqueLower(append(c.Status, status))
+	}
+
+	for _, edition := range c.Editions {
+		if edition.SetId == "unh" || edition.SetId == "ugl" {
+			return
+		}
+	}
+
+	for _, b := range f.Banned {
+		if c.Id == b.Id {
+			update(c, f.Name, "banned")
+			return
+		}
+	}
+
+	for _, r := range f.Restricted {
+		if c.Id == r.Id {
+			update(c, f.Name, "restricted")
+			return
+		}
+	}
+
+	if len(f.Sets) == 0 {
+		update(c, f.Name, "legal")
+		return
+	}
+
+	for _, edition := range c.Editions {
+		for _, format_set := range f.Sets {
+			if format_set == edition.SetId {
+				update(c, f.Name, "legal")
+				return
+			}
+		}
+	}
+}
+
 // FIXME: Add TX support
 // FIXME: Add Sets
 func CreateCollection(session *mgo.Session, collection MTGCollection) error {
 
 	_, cards, _ := TransformCollection(collection)
+
+	formats, err := LoadFormats("formats/commander.json", "formats/vintage.json",
+		"formats/legacy.json", "formats/standard.json", "formats/modern.json")
+
+	if err != nil {
+		return err
+	}
+
+	for i, _ := range cards {
+		for _, format := range formats {
+			AddFormat(&cards[i], &format)
+		}
+	}
 
 	cardCollection := session.DB("deckbrew").C("cards")
 
@@ -136,6 +195,8 @@ func CreateIndexes(session *mgo.Session) error {
 		mgo.Index{Key: []string{"subtypes"}},
 		mgo.Index{Key: []string{"supertypes"}},
 		mgo.Index{Key: []string{"colors"}},
+		mgo.Index{Key: []string{"formats"}},
+		mgo.Index{Key: []string{"status"}},
 		mgo.Index{Key: []string{"cmc"}},
 	}
 
@@ -147,6 +208,22 @@ func CreateIndexes(session *mgo.Session) error {
 		}
 	}
 	return nil
+}
+
+func LoadFormats(paths ...string) ([]MTGFormat, error) {
+	formats := []MTGFormat{}
+
+	for _, path := range paths {
+		f, err := LoadFormat(path)
+
+		if err != nil {
+			return formats, err
+		}
+
+		formats = append(formats, f)
+	}
+
+	return formats, nil
 }
 
 func RecreateDatabase(session *mgo.Session, path string) error {

@@ -61,6 +61,7 @@ type MTGFormat struct {
 	Sets       []string `json:"sets"`
 	Banned     []Card   `json:"banned"`
 	Restricted []Card   `json:"restricted"`
+	Name       string   `json:"name"`
 }
 
 func LoadFormat(path string) (MTGFormat, error) {

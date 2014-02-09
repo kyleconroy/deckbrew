@@ -77,6 +77,23 @@ func (s *Search) ParseColors() error {
 	})
 }
 
+func (s *Search) ParseStatus() error {
+	return s.extractStrings("format", "formats", map[string]bool{
+		"legal":      true,
+		"banned":     true,
+		"restricted": true,
+	})
+}
+
+func (s *Search) ParseFormat() error {
+	return s.extractStrings("format", "formats", map[string]bool{
+		"commander": true,
+		"standard":  true,
+		"modern":    true,
+		"vintage":   true,
+		"legacy":    true,
+	})
+}
 func (s *Search) ParseRarity() error {
 	return s.extractStrings("rarity", "editions.rarity", map[string]bool{
 		"common":      true,
@@ -129,6 +146,8 @@ func ParseSearch(u *url.URL) (interface{}, error, []string) {
 		search.ParseSupertypes(),
 		search.ParseColors(),
 		search.ParseSubtypes(),
+		search.ParseFormat(),
+		search.ParseStatus(),
 	}
 
 	var err error
