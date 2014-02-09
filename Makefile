@@ -1,24 +1,24 @@
 .PHONY: deps server test syncdb serverdb ami
 
-brewapi: api.go mtgjson.go database.go 
+brewapi: api.go mtgjson.go database.go qc.go 
 	go build -o brewapi
 
 deps:
 	go get -d -v ./...
 
 
-serve:
-	DECKBREW_HOSTNAME="http://localhost:3000" go run mtgjson.go database.go api.go qc.go
+serve: brewapi
+	DECKBREW_HOSTNAME="http://localhost:3000" ./brewapi
 
 test: cards.json 
 	go test -v
 
-syncdb: cards.json 
+syncdb: brewapi cards.json 
 	-dropdb deckbrew
 	-dropuser urza
 	psql -a -f schema/database.sql
 	psql -d deckbrew -a -f schema/brew.sql
-	go run mtgjson.go database.go api.go qc.go load cards.json
+	./brewapi load cards.json
 
 ami: deckbrew
 	packer build template.json

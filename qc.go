@@ -100,8 +100,8 @@ func Overlap(column string, val interface{}) Condition {
 	return comparison{column: column, operator: "&&", val: val}
 }
 
-func Regexp(column string, regex string, val interface{}) Condition {
-	return comparison{column: column, operator: regex, val: val}
+func ILike(column string, val interface{}) Condition {
+	return comparison{column: column, operator: "ILIKE", val: val}
 }
 
 func (e Expression) From(table ...string) Expression {

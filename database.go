@@ -6,7 +6,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"io"
-	"log"
 	"net/url"
 	"regexp"
 	"sort"
@@ -26,6 +25,7 @@ type Query struct {
 	Name       string
 	Formats    []string
 	Status     []int
+    Text string
 }
 
 func (q *Query) AddWhere(expr Expression) Expression {
@@ -47,7 +47,11 @@ func (q *Query) AddWhere(expr Expression) Expression {
 	}
 
 	if q.Name != "" {
-		c = append(c, Regexp("name", "~*", q.Name))
+		c = append(c, ILike("name", q.Name))
+	}
+
+	if q.Text != "" {
+		c = append(c, ILike("rules", q.Text))
 	}
 
 	if len(q.Sets) != 0 {
@@ -333,6 +337,7 @@ func NewQuery(u *url.URL) (Query, error) {
 		return q, err
 	}
 
+	q.Text = "%" + args.Get("oracle") + "%"
 	q.Sets = args["set"]
 	q.Rarity, err = extractRarity(args)
 
@@ -456,17 +461,16 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 
 	for i, _ := range cards {
 		cards[i].Fill()
+		//err = db.conn.Select(&cards[i].Editions, "SELECT * FROM editions WHERE card_id=$1 ORDER BY eid ASC", cards[i].Id)
 
-		err = db.conn.Select(&cards[i].Editions, "SELECT * FROM editions WHERE card_id=$1 ORDER BY eid ASC", cards[i].Id)
+		//if err != nil {
+		//	log.Println(err)
+		//	continue
+		//}
 
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		for j, _ := range cards[i].Editions {
-			cards[i].Editions[j].Fill()
-		}
+		//for j, _ := range cards[i].Editions {
+		//	cards[i].Editions[j].Fill()
+		//}
 
 	}
 

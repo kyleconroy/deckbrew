@@ -1,3 +1,5 @@
+CREATE EXTENSION pg_trgm;
+
 CREATE TABLE cards (
     cid               varchar(32) primary key,
     name              varchar(200) DEFAULT '',
@@ -22,7 +24,6 @@ CREATE TABLE cards (
 );
 
 CREATE INDEX cards_name_id ON cards(cid);
-CREATE INDEX cards_name_index ON cards(name);
 CREATE INDEX cards_power_index ON cards(power);
 CREATE INDEX cards_toughness_index ON cards(toughness);
 CREATE INDEX cards_types_index ON cards USING GIN(types);
@@ -31,6 +32,8 @@ CREATE INDEX cards_supertypes_index ON cards USING GIN(supertypes);
 CREATE INDEX cards_colors_index ON cards USING GIN(colors);
 CREATE INDEX cards_sets_index ON cards USING GIN(sets);
 CREATE INDEX cards_rarities_index ON cards USING GIN(rarities);
+CREATE INDEX cards_names_index ON cards USING GIN(name gin_trgm_ops);
+CREATE INDEX cards_rules_index ON cards USING GIN(rules gin_trgm_ops);
 
 
 CREATE INDEX cards_modern_index ON cards(modern);
@@ -64,6 +67,8 @@ CREATE TABLE editions (
 CREATE INDEX editions_id_index ON editions(eid);
 CREATE INDEX editions_cardid_index ON editions(card_id);
 CREATE INDEX editions_rarity_index ON editions(rarity);
+CREATE INDEX editions_set_id_index ON editions(set_id);
+CREATE INDEX editions_layout_index ON editions(layout);
 
 GRANT ALL PRIVILEGES ON TABLE cards TO urza;
 GRANT ALL PRIVILEGES ON TABLE sets TO urza;
