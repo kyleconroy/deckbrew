@@ -34,8 +34,6 @@ type Card struct {
 	Supertypes    []string          `json:"supertypes,omitempty"`
 	Subtypes      []string          `json:"subtypes,omitempty"`
 	Colors        []string          `json:"colors,omitempty"`
-	Rarities      []string          `json:"-"`
-	Sets          []string          `json:"-"`
 	ConvertedCost int               `json:"cmc"`
 	ManaCost      string            `json:"cost"`
 	Text          string            `json:"text"`
@@ -163,71 +161,6 @@ func GetCards(db *mgo.Database, req *http.Request, w http.ResponseWriter) (int, 
 
 	return JSON(http.StatusOK, cards)
 }
-func GetSupertypes(db *Database) (int, []byte) {
-	types, err := db.FetchTerms("supertypes")
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Supertypes not found"))
-	}
-
-	return JSON(http.StatusOK, types)
-}
-
-func GetColors(db *Database) (int, []byte) {
-	types, err := db.FetchTerms("colors")
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Colors not found"))
-	}
-
-	return JSON(http.StatusOK, types)
-}
-
-func GetSubtypes(db *Database) (int, []byte) {
-	types, err := db.FetchTerms("subtypes")
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Subtypes not found"))
-	}
-
-	return JSON(http.StatusOK, types)
-}
-
-func GetTypes(db *Database) (int, []byte) {
-	types, err := db.FetchTerms("types")
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Types not found"))
-	}
-
-	return JSON(http.StatusOK, types)
-}
-
-func GetSets(db *Database) (int, []byte) {
-	sets, err := db.FetchSets()
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Sets not found"))
-	}
-
-	return JSON(http.StatusOK, sets)
-}
-
-func GetSet(db *Database, params martini.Params) (int, []byte) {
-	card, err := db.FetchSet(params["id"])
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Set not found"))
-	}
-
-	return JSON(http.StatusOK, card)
-}
 
 func GetCard(db *mgo.Database, params martini.Params) (int, []byte) {
 	collection := db.C("cards")
@@ -246,10 +179,92 @@ func GetCard(db *mgo.Database, params martini.Params) (int, []byte) {
 	return JSON(http.StatusOK, card)
 }
 
+func GetSets(db *mgo.Database) (int, []byte) {
+	collection := db.C("sets")
+
+	var sets []Set
+
+	err := collection.Find(nil).All(&sets)
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, Errors("Sets not found"))
+	}
+
+	if len(sets) == 0 {
+		return JSON(http.StatusOK, []Set{})
+	}
+
+	return JSON(http.StatusOK, sets)
+}
+
+func GetSet(db *mgo.Database, params martini.Params) (int, []byte) {
+	collection := db.C("sets")
+
+	var set Set
+
+	err := collection.Find(bson.M{"_id": params["id"]}).One(&set)
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, Errors("Card not found"))
+	}
+
+	set.Fill()
+
+	return JSON(http.StatusOK, set)
+}
+
+//func GetSupertypes(db *Database) (int, []byte) {
+//	types, err := db.FetchTerms("supertypes")
+//
+//	if err != nil {
+//		log.Println(err)
+//		return JSON(http.StatusNotFound, Errors("Supertypes not found"))
+//	}
+//
+//	return JSON(http.StatusOK, types)
+//}
+//
+//func GetColors(db *Database) (int, []byte) {
+//	types, err := db.FetchTerms("colors")
+//
+//	if err != nil {
+//		log.Println(err)
+//		return JSON(http.StatusNotFound, Errors("Colors not found"))
+//	}
+//
+//	return JSON(http.StatusOK, types)
+//}
+//
+//func GetSubtypes(db *Database) (int, []byte) {
+//	types, err := db.FetchTerms("subtypes")
+//
+//	if err != nil {
+//		log.Println(err)
+//		return JSON(http.StatusNotFound, Errors("Subtypes not found"))
+//	}
+//
+//	return JSON(http.StatusOK, types)
+//}
+//
+//func GetTypes(db *Database) (int, []byte) {
+//	types, err := db.FetchTerms("types")
+//
+//	if err != nil {
+//		log.Println(err)
+//		return JSON(http.StatusNotFound, Errors("Types not found"))
+//	}
+//
+//	return JSON(http.StatusOK, types)
+//}
+
 type Pong struct {
 	Rally string `json:"rally"`
 }
 
+// FIXME: Ping the database
+// FIXME: Don't cache this
 func Ping() (int, []byte) {
 	return JSON(http.StatusOK, Pong{Rally: "serve"})
 }
@@ -258,26 +273,7 @@ func NotFound() (int, []byte) {
 	return JSON(http.StatusNotFound, Errors("No endpoint here"))
 }
 
-func Placeholder(params martini.Params) string {
-	return "Hello world!"
-}
-
-func NewApi(db *Database) *martini.Martini {
-	session, err := mgo.Dial("localhost:27017")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Optional. Switch the session to a monotonic behavior.
-	session.SetMode(mgo.Monotonic, true)
-
-	newdb := session.DB("deckbrew")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func NewApi() *martini.Martini {
 	m := martini.New()
 
 	// Setup middleware
@@ -299,34 +295,31 @@ func NewApi(db *Database) *martini.Martini {
 	r.Get("/mtg/cards/:id", GetCard)
 	r.Get("/mtg/sets", GetSets)
 	r.Get("/mtg/sets/:id", GetSet)
-	r.Get("/mtg/colors", GetColors)
-	r.Get("/mtg/supertypes", GetSupertypes)
-	r.Get("/mtg/subtypes", GetSubtypes)
-	r.Get("/mtg/types", GetTypes)
+	//r.Get("/mtg/colors", GetColors)
+	//r.Get("/mtg/supertypes", GetSupertypes)
+	//r.Get("/mtg/subtypes", GetSubtypes)
+	//r.Get("/mtg/types", GetTypes)
 	r.NotFound(NotFound)
 
-	//They can just download the mtgjson dump
-	//r.Get("/mtg/editions", GetEditions)
-
 	m.Action(r.Handle)
-	m.Map(db)
-	m.Map(newdb)
-
 	return m
 }
 
 func main() {
 	flag.Parse()
 
-	db, err := Open("postgres://urza:power9@localhost/deckbrew?sslmode=disable")
+	session, err := mgo.Dial("localhost:27017")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+
 	if flag.Arg(0) == "load" {
 
-		err = NewLoad(flag.Arg(1))
+		err = RecreateDatabase(session, flag.Arg(1))
 
 		if err != nil {
 			log.Fatal(err)
@@ -335,6 +328,7 @@ func main() {
 		return
 	}
 
-	m := NewApi(&db)
+	m := NewApi()
+	m.Map(session.DB("deckbrew"))
 	m.Run()
 }
