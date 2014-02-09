@@ -8,17 +8,13 @@ deps:
 
 
 serve:
-	DECKBREW_HOSTNAME="http://localhost:3000" go run mtgjson.go database.go api.go qc.go
+	DECKBREW_HOSTNAME="http://localhost:3000" go run mtgjson.go mongo.go database.go api.go qc.go
 
 test: cards.json 
 	go test -v
 
 syncdb: cards.json 
-	-dropdb deckbrew
-	-dropuser urza
-	psql -a -f schema/database.sql
-	psql -d deckbrew -a -f schema/brew.sql
-	go run mtgjson.go database.go api.go qc.go load cards.json
+	go run mtgjson.go database.go api.go qc.go mongo.go load cards.json
 
 ami: deckbrew
 	packer build template.json

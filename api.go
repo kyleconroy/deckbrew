@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"github.com/codegangsta/martini"
 	"github.com/codegangsta/martini-contrib/gzip"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func GetHostname() string {
@@ -26,88 +27,44 @@ func GetHostname() string {
 
 // Import this eventually
 type Card struct {
-	Name             string            `json:"name" db:"name"`
-	Id               string            `json:"id" db:"cid"`
-	Href             string            `json:"url,omitempty"`
-	JoinedTypes      string            `json:"-" db:"types"`
-	JoinedSupertypes string            `json:"-" db:"supertypes"`
-	JoinedSubtypes   string            `json:"-" db:"subtypes"`
-	JoinedColors     string            `json:"-" db:"colors"`
-	Types            []string          `json:"types,omitempty" db:"-"`
-	Supertypes       []string          `json:"supertypes,omitempty" db:"-"`
-	Subtypes         []string          `json:"subtypes,omitempty" db:"-"`
-	Colors           []string          `json:"colors,omitempty" db:"-"`
-	Rarities         []string          `json:"-" db:"-"`
-	Sets             []string          `json:"-" db:"-"`
-	ConvertedCost    int               `json:"cmc" db:"cmc"`
-	ManaCost         string            `json:"cost" db:"mana_cost"`
-	Text             string            `json:"text" db:"rules"`
-	Power            string            `json:"power,omitempty" db:"power"`
-	Toughness        string            `json:"toughness,omitempty" db:"toughness"`
-	Loyalty          int               `json:"loyalty,omitempty" db:"loyalty"`
-	Standard         int               `json:"-"`
-	Commander        int               `json:"-"`
-	Modern           int               `json:"-"`
-	Legacy           int               `json:"-"`
-	Vintage          int               `json:"-"`
-	Classic          int               `json:"-"`
-	Formats          map[string]string `json:"formats" db:"-"`
-	Editions         []Edition         `json:"editions,omitempty"`
-}
-
-func explode(types string) []string {
-	if types == "" {
-		return []string{}
-	} else {
-		return strings.Split(types, ",")
-	}
-}
-
-func (c *Card) fillFormat(format string, legal int) {
-	formats := map[int]string{
-		1: "legal",
-		2: "restricted",
-		3: "banned",
-	}
-
-	if c.Formats == nil {
-		c.Formats = map[string]string{}
-	}
-
-	if legal > 0 && legal < 4 {
-		c.Formats[format] = formats[legal]
-	}
+	Name          string            `json:"name"`
+	Id            string            `json:"id" bson:"_id"`
+	Href          string            `json:"url" bson:"-"`
+	Types         []string          `json:"types,omitempty"`
+	Supertypes    []string          `json:"supertypes,omitempty"`
+	Subtypes      []string          `json:"subtypes,omitempty"`
+	Colors        []string          `json:"colors,omitempty"`
+	Rarities      []string          `json:"-"`
+	Sets          []string          `json:"-"`
+	ConvertedCost int               `json:"cmc"`
+	ManaCost      string            `json:"cost"`
+	Text          string            `json:"text"`
+	Power         string            `json:"power,omitempty"`
+	Toughness     string            `json:"toughness,omitempty"`
+	Loyalty       int               `json:"loyalty,omitempty"`
+	Formats       map[string]string `json:"formats"`
+	Editions      []Edition         `json:"editions,omitempty"`
 }
 
 func (c *Card) Fill() {
 	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
-	c.Types = explode(c.JoinedTypes)
-	c.Supertypes = explode(c.JoinedSupertypes)
-	c.Subtypes = explode(c.JoinedSubtypes)
-	c.Colors = explode(c.JoinedColors)
-
-	c.fillFormat("vintage", c.Vintage)
-	c.fillFormat("legacy", c.Legacy)
-	c.fillFormat("commander", c.Commander)
-	c.fillFormat("modern", c.Modern)
-	c.fillFormat("standard", c.Standard)
 }
 
 type Edition struct {
-	Set          string `json:"set" db:"set_name"`
-	SetId        string `json:"-" db:"set_id"`
-	CardId       string `json:"-" db:"card_id"`
+	Set          string `json:"set"`
+	SetId        string `json:"-"`
+	CardId       string `json:"-" bson:"-"`
 	Watermark    string `json:"watermark,omitempty"`
 	Rarity       string `json:"rarity"`
 	Border       string `json:"-"`
 	Artist       string `json:"artist"`
-	MultiverseId int    `json:"multiverse_id" db:"eid"`
+	MultiverseId int    `json:"multiverse_id"`
 	Flavor       string `json:"flavor,omitempty"`
-	Number       string `json:"number" db:"set_number"`
+	Number       string `json:"number"`
 	Layout       string `json:"layout"`
-	Href         string `json:"url,omitempty" db:"-"`
-	ImageUrl     string `json:"image_url,omitempty" db:"-"`
-	SetUrl       string `json:"set_url,omitempty" db:"-"`
+	Href         string `json:"url,omitempty" bson:"-"`
+	ImageUrl     string `json:"image_url,omitempty" bson:"-"`
+	SetUrl       string `json:"set_url,omitempty" bson:"-"`
 }
 
 func (e *Edition) Fill() {
@@ -117,7 +74,7 @@ func (e *Edition) Fill() {
 }
 
 type Set struct {
-	Id     string `json:"id"`
+	Id     string `json:"id" bson:"_id"`
 	Name   string `json:"name"`
 	Border string `json:"border"`
 	Type   string `json:"type"`
@@ -142,18 +99,18 @@ func Errors(errors ...string) ApiError {
 	return ApiError{Errors: errors}
 }
 
-func LinkHeader(host string, u *url.URL, q Query) string {
-	if q.Page == 0 {
+func LinkHeader(host string, u *url.URL, page int) string {
+	if page == 0 {
 		qstring := u.Query()
 		qstring.Set("page", "1")
 		return fmt.Sprintf("<%s%s?%s>; rel=\"next\"", host, u.Path, qstring.Encode())
 	} else {
 		qstring := u.Query()
 
-		qstring.Set("page", strconv.Itoa(q.Page-1))
+		qstring.Set("page", strconv.Itoa(page-1))
 		prev := fmt.Sprintf("<%s%s?%s>; rel=\"prev\"", host, u.Path, qstring.Encode())
 
-		qstring.Set("page", strconv.Itoa(q.Page+1))
+		qstring.Set("page", strconv.Itoa(page+1))
 		next := fmt.Sprintf("<%s%s?%s>; rel=\"next\"", host, u.Path, qstring.Encode())
 
 		return prev + ", " + next
@@ -164,22 +121,37 @@ type ApiError struct {
 	Errors []string `json:"errors"`
 }
 
-func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []byte) {
-	q, err := NewQuery(req.URL)
+func GetCards(db *mgo.Database, req *http.Request, w http.ResponseWriter) (int, []byte) {
+	q, err := CardsQuery(req.URL)
 
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusBadRequest, Errors(err.Error()))
 	}
 
-	cards, err := db.FetchCards(q)
+	page, err := CardsPaging(req.URL)
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Cards not found"))
+		return JSON(http.StatusBadRequest, Errors(err.Error()))
 	}
 
-	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, q))
+	collection := db.C("cards")
+
+	var cards []Card
+
+	err = collection.Find(q).Limit(100).Skip(100 * page).Sort("name").All(&cards)
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, Errors("Card not found"))
+	}
+
+	for i, _ := range cards {
+		cards[i].Fill()
+	}
+
+	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, page))
 
 	return JSON(http.StatusOK, cards)
 }
@@ -249,13 +221,19 @@ func GetSet(db *Database, params martini.Params) (int, []byte) {
 	return JSON(http.StatusOK, card)
 }
 
-func GetCard(db *Database, params martini.Params) (int, []byte) {
-	card, err := db.FetchCard(params["id"])
+func GetCard(db *mgo.Database, params martini.Params) (int, []byte) {
+	collection := db.C("cards")
+
+	var card Card
+
+	err := collection.Find(bson.M{"_id": params["id"]}).One(&card)
 
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors("Card not found"))
 	}
+
+	card.Fill()
 
 	return JSON(http.StatusOK, card)
 }
@@ -288,6 +266,21 @@ func Placeholder(params martini.Params) string {
 }
 
 func NewApi(db *Database) *martini.Martini {
+	session, err := mgo.Dial("localhost:27017")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+
+	newdb := session.DB("deckbrew")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	m := martini.New()
 
 	// Setup middleware
@@ -321,6 +314,7 @@ func NewApi(db *Database) *martini.Martini {
 
 	m.Action(r.Handle)
 	m.Map(db)
+	m.Map(newdb)
 
 	return m
 }
@@ -335,19 +329,13 @@ func main() {
 	}
 
 	if flag.Arg(0) == "load" {
-		collection, err := LoadCollection(flag.Arg(1))
+
+		err = NewLoad(flag.Arg(1))
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		err = db.Load(collection)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Println("Loaded all data into the database")
 		return
 	}
 

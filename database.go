@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"labix.org/v2/mgo/bson"
 	"io"
 	"log"
 	"net/url"
@@ -69,15 +70,15 @@ func (q *Query) AddWhere(expr Expression) Expression {
 			or_conds = append(or_conds, Gt(format, 0))
 		}
 
-        c = append(c, Or(or_conds...))
-    }
+		c = append(c, Or(or_conds...))
+	}
 
-    if len(q.Status) > 0 {
-        formats := q.Formats
+	if len(q.Status) > 0 {
+		formats := q.Formats
 
-        if len(formats) == 0 {
-                formats = []string{"commander", "vintage", "legacy", "standard", "modern"}
-        }
+		if len(formats) == 0 {
+			formats = []string{"commander", "vintage", "legacy", "standard", "modern"}
+		}
 
 		or_conds := []Condition{}
 
@@ -87,7 +88,7 @@ func (q *Query) AddWhere(expr Expression) Expression {
 			}
 		}
 
-        c = append(c, Or(or_conds...))
+		c = append(c, Or(or_conds...))
 	}
 
 	return expr.Where(And(c...)).OrderBy("name", true).Limit(100).Offset(q.PageOffset())
@@ -259,8 +260,12 @@ func extractTypes(args url.Values) ([]string, error) {
 	return items, nil
 }
 
-func extractPage(args url.Values) (int, error) {
-	pagenum := args.Get("page")
+func CardsQuery(u *url.URL) (interface{}, error) {
+        return bson.M{"editions.multiverseid": 369080}, nil
+}
+
+func CardsPaging(u *url.URL) (int, error) {
+	pagenum := u.Query().Get("page")
 
 	if pagenum == "" {
 		pagenum = "0"
@@ -276,16 +281,15 @@ func extractPage(args url.Values) (int, error) {
 		return 0, fmt.Errorf("Page parameter must be >= 0")
 	}
 
-	return page, nil
+    return page, nil
 }
+
 
 func NewQuery(u *url.URL) (Query, error) {
 	var err error
 
 	args := u.Query()
 	q := Query{}
-
-	q.Page, err = extractPage(args)
 
 	if err != nil {
 		return q, err
@@ -616,6 +620,14 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
 	for i, c := range cards {
 		cards[i].Sets = UniqueToLower(c_sets[c.Id])
 		cards[i].Rarities = UniqueToLower(c_rarity[c.Id])
+	}
+
+	for i, c := range cards {
+		for _, edition := range editions {
+			if edition.CardId == c.Id {
+				cards[i].Editions = append(cards[i].Editions, edition)
+			}
+		}
 	}
 
 	return sets, cards, editions
