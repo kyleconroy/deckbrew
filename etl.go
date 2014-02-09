@@ -118,7 +118,7 @@ func AddFormat(c *Card, f *MTGFormat) {
 	}
 
 	for _, edition := range c.Editions {
-		if edition.SetId == "unh" || edition.SetId == "ugl" {
+		if edition.SetId == "UNH" || edition.SetId == "UGL" {
 			return
 		}
 	}
@@ -144,7 +144,7 @@ func AddFormat(c *Card, f *MTGFormat) {
 
 	for _, edition := range c.Editions {
 		for _, format_set := range f.Sets {
-			if format_set == edition.SetId {
+			if strings.ToUpper(format_set) == strings.ToUpper(edition.SetId) {
 				update(c, f.Name, "legal")
 				return
 			}
@@ -191,6 +191,7 @@ func CreateIndexes(session *mgo.Session) error {
 		mgo.Index{Key: []string{"name"}, Unique: true, DropDups: true},
 		mgo.Index{Key: []string{"editions.multiverseid"}},
 		mgo.Index{Key: []string{"editions.rarity"}},
+		mgo.Index{Key: []string{"editions.setid"}},
 		mgo.Index{Key: []string{"types"}},
 		mgo.Index{Key: []string{"subtypes"}},
 		mgo.Index{Key: []string{"supertypes"}},
@@ -198,6 +199,7 @@ func CreateIndexes(session *mgo.Session) error {
 		mgo.Index{Key: []string{"formats"}},
 		mgo.Index{Key: []string{"status"}},
 		mgo.Index{Key: []string{"cmc"}},
+		mgo.Index{Key: []string{"text"}},
 	}
 
 	for _, index := range indexes {

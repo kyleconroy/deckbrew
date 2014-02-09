@@ -4,7 +4,17 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 )
+
+func toUpper(strs []string) []string {
+	uppers := []string{}
+	for _, s := range strs {
+		uppers = append(uppers, strings.ToUpper(s))
+	}
+	return uppers
+
+}
 
 type Search struct {
 	Query map[string]interface{}
@@ -14,14 +24,18 @@ type Search struct {
 func (s *Search) extractStrings(searchTerm, key string, allowed map[string]bool) error {
 	items := s.Args[searchTerm]
 
-	if len(items) == 0 {
-		return nil
-	}
-
 	for _, t := range items {
 		if !allowed[t] {
 			return fmt.Errorf("The %s '%s' is not recognized", key, t)
 		}
+	}
+
+	return s.addQuery(key, items)
+}
+
+func (s *Search) addQuery(key string, items []string) error {
+	if len(items) == 0 {
+		return nil
 	}
 
 	if len(items) == 1 {
@@ -59,12 +73,11 @@ func (s *Search) ParseSupertypes() error {
 }
 
 func (s *Search) ParseSubtypes() error {
-	sts := s.Args["subtype"]
+	return s.addQuery("subtypes", s.Args["subtype"])
+}
 
-	if len(sts) > 0 {
-		s.Query["subtypes"] = map[string][]string{"$in": sts}
-	}
-	return nil
+func (s *Search) ParseSets() error {
+	return s.addQuery("editions.setid", toUpper(s.Args["set"]))
 }
 
 func (s *Search) ParseColors() error {
@@ -78,7 +91,7 @@ func (s *Search) ParseColors() error {
 }
 
 func (s *Search) ParseStatus() error {
-	return s.extractStrings("format", "formats", map[string]bool{
+	return s.extractStrings("status", "status", map[string]bool{
 		"legal":      true,
 		"banned":     true,
 		"restricted": true,
@@ -136,6 +149,11 @@ func (s *Search) ParseTypes() error {
 	return nil
 }
 
+func (s *Search) ParseText() error {
+        s.Query["text"] = map[string]string{"$regex": "zombie|human", "$options": "i"}
+        return nil
+}
+
 func ParseSearch(u *url.URL) (interface{}, error, []string) {
 	search := Search{Args: u.Query(), Query: map[string]interface{}{}}
 
@@ -148,6 +166,8 @@ func ParseSearch(u *url.URL) (interface{}, error, []string) {
 		search.ParseSubtypes(),
 		search.ParseFormat(),
 		search.ParseStatus(),
+		search.ParseSets(),
+		search.ParseText(),
 	}
 
 	var err error
