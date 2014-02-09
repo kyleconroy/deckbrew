@@ -444,8 +444,6 @@ func (db *Database) FetchCards(q Query) ([]Card, error) {
 
 	sql, items, err := query.ToSql()
 
-	log.Println(sql, items)
-
 	if err != nil {
 		return cards, err
 	}
