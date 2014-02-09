@@ -8,7 +8,7 @@ deps:
 
 
 serve:
-	DECKBREW_HOSTNAME="http://localhost:3000" go run mtgjson.go database.go api.go
+	DECKBREW_HOSTNAME="http://localhost:3000" go run mtgjson.go database.go api.go qc.go
 
 test: cards.json 
 	go test -v

@@ -24,85 +24,73 @@ type Query struct {
 	Rarity     []string
 	Sets       []string
 	Name       string
-	Formats  []string
-	Status   []int
+	Formats    []string
+	Status     []int
 }
 
-func (q *Query) WhereClause() (string, []interface{}) {
-	query := "WHERE "
-	count := 1
-	items := []interface{}{}
+func (q *Query) AddWhere(expr Expression) Expression {
+	c := []Condition{}
 
-	pgarray := func(strs []string) string {
+	over := func(column string, strs []string) Condition {
 		sort.Strings(strs)
-		return CreateStringArray(strs)
+		return Overlap(column, CreateStringArray(strs))
 	}
 
-	query += fmt.Sprintf("types && $%d", count)
-	count += 1
-	items = append(items, pgarray(q.Types))
+	c = append(c, over("types", q.Types))
 
 	if len(q.Subtypes) != 0 {
-		query += " AND " + fmt.Sprintf("subtypes && $%d", count)
-		count += 1
-		items = append(items, pgarray(q.Subtypes))
-	}
-
-	if q.Name != "" {
-		query += " AND " + fmt.Sprintf("name ~* $%d", count)
-		count += 1
-		items = append(items, q.Name)
+		c = append(c, over("subtypes", q.Subtypes))
 	}
 
 	if len(q.Supertypes) != 0 {
-		query += " AND " + fmt.Sprintf("supertypes && $%d", count)
-		count += 1
-		items = append(items, pgarray(q.Supertypes))
+		c = append(c, over("supertypes", q.Supertypes))
+	}
+
+	if q.Name != "" {
+		c = append(c, Regexp("name", "~*", q.Name))
 	}
 
 	if len(q.Sets) != 0 {
-		query += " AND " + fmt.Sprintf("sets && $%d", count)
-		count += 1
-		items = append(items, pgarray(q.Sets))
+		c = append(c, over("sets", q.Sets))
 	}
 
 	if len(q.Rarity) != 0 {
-		query += " AND " + fmt.Sprintf("rarities && $%d", count)
-		count += 1
-		items = append(items, pgarray(q.Rarity))
+		c = append(c, over("rarities", q.Rarity))
 	}
 
 	if len(q.Colors) != 0 {
-		query += " AND " + fmt.Sprintf("colors && $%d", count)
-		count += 1
-		items = append(items, pgarray(q.Colors))
+		c = append(c, over("colors", q.Colors))
 	}
 
-	//if len(q.Formats) > 0 && len(q.Status) > 0 {
-	//} else if len(q.Formats) > 0 && len(q.Status) == 0 {
-    //    for _, format := range q.Formats {
-    //        // FIXME: Unsafe sql operation
-	//	    query += " AND " + fmt.Sprintf("%s > $%d", format, count)
-	//	    count += 1
-	//	    items = append(items, 0)
-    //    }
-	//} else if len(q.Formats) == 0 && len(q.Status) > 0 {
-    //    formats := []string{"commander", "vintage", "legacy", "standard", "modern"}
-    //    subquery := "()"
-    //    for _, status := range q.Status {
-    //    for _, format := range formats {
-    //        // FIXME: Unsafe sql operation
-	//	    query += " AND " + fmt.Sprintf("%s > $%d", format, count)
-	//	    count += 1
-	//	    items = append(items, 0)
-    //    }
-    //    query += " AND (" + subquery + ")"
-	//}
+	if len(q.Formats) > 0 {
+		or_conds := []Condition{}
 
-	query += fmt.Sprintf(" ORDER BY name ASC LIMIT 100 OFFSET $%d", count)
-	items = append(items, q.PageOffset())
+		for _, format := range q.Formats {
+			or_conds = append(or_conds, Gt(format, 0))
+		}
 
-	return query, items
+        c = append(c, Or(or_conds...))
+    }
+
+    if len(q.Status) > 0 {
+        formats := q.Formats
+
+        if len(formats) == 0 {
+                formats = []string{"commander", "vintage", "legacy", "standard", "modern"}
+        }
+
+		or_conds := []Condition{}
+
+		for _, status := range q.Status {
+			for _, format := range formats {
+				or_conds = append(or_conds, Eq(format, status))
+			}
+		}
+
+        c = append(c, Or(or_conds...))
+	}
+
+	return expr.Where(And(c...)).OrderBy("name", true).Limit(100).Offset(q.PageOffset())
 }
 
 func (q *Query) PageOffset() int {
@@ -148,12 +136,11 @@ func extractInts(args url.Values, key string, allowed map[string]int) ([]int, er
 		if allowed[t] == 0 {
 			return ints, fmt.Errorf("The %s '%s' is not recognized", key, t)
 		}
-        ints = append(ints, allowed[t])
+		ints = append(ints, allowed[t])
 	}
 
 	return ints, nil
 }
-
 
 func extractItems(args url.Values, key string, allowed map[string]bool) ([]string, error) {
 	items := args[key]
@@ -196,21 +183,20 @@ func extractColors(args url.Values) ([]string, error) {
 
 func extractStatus(args url.Values) ([]int, error) {
 	allowed := map[string]int{
-		"legal": 1,
-		"restricted":     2,
+		"legal":      1,
+		"restricted": 2,
 		"banned":     3,
 	}
 	return extractInts(args, "status", allowed)
 }
 
-
 func extractFormats(args url.Values) ([]string, error) {
 	allowed := map[string]bool{
-		"vintage": true,
-		"commander":     true,
-		"standard":     true,
-		"legacy":      true,
-		"modern":   true,
+		"vintage":   true,
+		"commander": true,
+		"standard":  true,
+		"legacy":    true,
+		"modern":    true,
 	}
 	return extractItems(args, "format", allowed)
 }
@@ -449,9 +435,22 @@ func (db *Database) FetchTerms(term string) ([]string, error) {
 func (db *Database) FetchCards(q Query) ([]Card, error) {
 	cards := []Card{}
 
-	clause, items := q.WhereClause()
+	query := Select("name", "cid", "mana_cost", "cmc", "loyalty", "rules",
+		"standard", "modern", "legacy", "vintage", "commander",
+		"array_to_string(subtypes, ',') AS subtypes",
+		"array_to_string(supertypes, ',') AS supertypes",
+		"array_to_string(colors, ',') AS colors")
+	query = q.AddWhere(query.From("cards"))
 
-	err := db.conn.Select(&cards, "SELECT name, cid, array_to_string(types, ',') AS types, array_to_string(subtypes, ',') AS subtypes, array_to_string(supertypes, ',') AS supertypes, array_to_string(colors, ',') AS colors, mana_cost, cmc, loyalty, rules, standard, modern, legacy, vintage, commander FROM cards "+clause, items...)
+	sql, items, err := query.ToSql()
+
+	log.Println(sql, items)
+
+	if err != nil {
+		return cards, err
+	}
+
+	err = db.conn.Select(&cards, sql, items...)
 
 	if err != nil {
 		return cards, err
