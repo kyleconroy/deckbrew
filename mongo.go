@@ -32,23 +32,25 @@ func LoadMongo(session *mgo.Session, collection MTGCollection) error {
 func CreateIndexes(session *mgo.Session) error {
 	cardCollection := session.DB("deckbrew").C("cards")
 
-	index := mgo.Index{
-		Key:      []string{"name"},
-		Unique:   true,
-		DropDups:   true,
+	indexes := []mgo.Index{
+		mgo.Index{Key: []string{"name"}, Unique: true, DropDups: true},
+		mgo.Index{Key: []string{"editions.multiverseid"}},
+		mgo.Index{Key: []string{"editions.rarity"}},
+		mgo.Index{Key: []string{"types"}},
+		mgo.Index{Key: []string{"subtypes"}},
+		mgo.Index{Key: []string{"supertypes"}},
+		mgo.Index{Key: []string{"colors"}},
+		mgo.Index{Key: []string{"cmc"}},
 	}
 
-    err := cardCollection.EnsureIndex(index)
+	for _, index := range indexes {
+		err := cardCollection.EnsureIndex(index)
 
-    if err != nil {
-            return err
-}
-
-	index = mgo.Index{
-		Key:      []string{"editions.multiverseid"},
+		if err != nil {
+			return err
+		}
 	}
-
-	return cardCollection.EnsureIndex(index)
+	return nil
 }
 
 func NewLoad(path string) error {

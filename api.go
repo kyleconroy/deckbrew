@@ -48,6 +48,10 @@ type Card struct {
 
 func (c *Card) Fill() {
 	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
+
+	for i, _ := range c.Editions {
+		c.Editions[i].Fill()
+	}
 }
 
 type Edition struct {
@@ -68,7 +72,7 @@ type Edition struct {
 }
 
 func (e *Edition) Fill() {
-	e.Href = fmt.Sprintf("%s/mtg/editions/%d", GetHostname(), e.MultiverseId)
+	e.Href = fmt.Sprintf("%s/mtg/cards?multiverseid=%d", GetHostname(), e.MultiverseId)
 	e.SetUrl = fmt.Sprintf("%s/mtg/sets/%s", GetHostname(), e.SetId)
 	e.ImageUrl = fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", e.MultiverseId)
 }
@@ -122,11 +126,11 @@ type ApiError struct {
 }
 
 func GetCards(db *mgo.Database, req *http.Request, w http.ResponseWriter) (int, []byte) {
-	q, err := CardsQuery(req.URL)
+	q, err, errors := ParseSearch(req.URL)
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusBadRequest, Errors(err.Error()))
+		return JSON(http.StatusBadRequest, Errors(errors...))
 	}
 
 	page, err := CardsPaging(req.URL)
@@ -145,6 +149,10 @@ func GetCards(db *mgo.Database, req *http.Request, w http.ResponseWriter) (int, 
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors("Card not found"))
+	}
+
+	if len(cards) == 0 {
+		return JSON(http.StatusOK, []Card{})
 	}
 
 	for i, _ := range cards {
@@ -246,17 +254,6 @@ func Ping() (int, []byte) {
 	return JSON(http.StatusOK, Pong{Rally: "serve"})
 }
 
-func GetEdition(db *Database, params martini.Params) (int, []byte) {
-	cards, err := db.FetchEditions(params["id"])
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Edition not found"))
-	}
-
-	return JSON(http.StatusOK, cards)
-}
-
 func NotFound() (int, []byte) {
 	return JSON(http.StatusNotFound, Errors("No endpoint here"))
 }
@@ -300,7 +297,6 @@ func NewApi(db *Database) *martini.Martini {
 	r.Get("/ping", Ping)
 	r.Get("/mtg/cards", GetCards)
 	r.Get("/mtg/cards/:id", GetCard)
-	r.Get("/mtg/editions/:id", GetEdition)
 	r.Get("/mtg/sets", GetSets)
 	r.Get("/mtg/sets/:id", GetSet)
 	r.Get("/mtg/colors", GetColors)
