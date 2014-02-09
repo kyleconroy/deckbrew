@@ -1,4 +1,5 @@
 {
+  "name": "legacy",
   "banned": [
     {"id": "1064205469f2cd8cbe398467af2dffa9", "name": "Amulet of Quoz"},
     {"id": "d9f86732d8cc0b7f54632bf93a028b7f", "name": "Ancestral Recall"},

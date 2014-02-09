@@ -25,7 +25,7 @@ type Query struct {
 	Name       string
 	Formats    []string
 	Status     []int
-    Text string
+	Text       string
 }
 
 func (q *Query) AddWhere(expr Expression) Expression {
@@ -73,15 +73,15 @@ func (q *Query) AddWhere(expr Expression) Expression {
 			or_conds = append(or_conds, Gt(format, 0))
 		}
 
-        c = append(c, Or(or_conds...))
-    }
+		c = append(c, Or(or_conds...))
+	}
 
-    if len(q.Status) > 0 {
-        formats := q.Formats
+	if len(q.Status) > 0 {
+		formats := q.Formats
 
-        if len(formats) == 0 {
-                formats = []string{"commander", "vintage", "legacy", "standard", "modern"}
-        }
+		if len(formats) == 0 {
+			formats = []string{"commander", "vintage", "legacy", "standard", "modern"}
+		}
 
 		or_conds := []Condition{}
 
@@ -91,7 +91,7 @@ func (q *Query) AddWhere(expr Expression) Expression {
 			}
 		}
 
-        c = append(c, Or(or_conds...))
+		c = append(c, Or(or_conds...))
 	}
 
 	return expr.Where(And(c...)).OrderBy("name", true).Limit(100).Offset(q.PageOffset())
@@ -536,100 +536,11 @@ func UniqueToLower(things []string) []string {
 	return sorted
 }
 
-func normalize(things []string) []string {
-	sorted := []string{}
-	for _, thing := range things {
-		sorted = append(sorted, strings.ToLower(strings.Replace(thing, ",", "", -1)))
-	}
-	sort.Strings(sorted)
-	return sorted
-}
-
-func TransformEdition(s MTGSet, c MTGCard) Edition {
-	return Edition{
-		Set:          s.Name,
-		SetId:        s.Code,
-		Flavor:       c.Flavor,
-		MultiverseId: c.MultiverseId,
-		Watermark:    c.Watermark,
-		Rarity:       strings.ToLower(c.Rarity),
-		Artist:       c.Artist,
-		Border:       c.Border,
-		Layout:       c.Layout,
-		Number:       c.Number,
-		CardId:       makeId(c),
-	}
-}
-
-func TransformSet(s MTGSet) Set {
-	// FIXME: Add released dates
-	return Set{
-		Name:   s.Name,
-		Id:     s.Code,
-		Border: s.Border,
-		Type:   s.Type,
-	}
-}
-
-func TransformCard(c MTGCard) Card {
-	return Card{
-		Name:          c.Name,
-		Id:            makeId(c),
-		Text:          c.Text,
-		Colors:        normalize(c.Colors),
-		Types:         normalize(c.Types),
-		Supertypes:    normalize(c.Supertypes),
-		Subtypes:      normalize(c.Subtypes),
-		Power:         c.Power,
-		Toughness:     c.Toughness,
-		Loyalty:       c.Loyalty,
-		ManaCost:      c.ManaCost,
-		ConvertedCost: int(c.ConvertedCost),
-	}
-}
-
-func TransformCollection(collection MTGCollection) ([]Set, []Card, []Edition) {
-	cards := []Card{}
-	ids := map[string]Card{}
-	editions := []Edition{}
-	sets := []Set{}
-
-	// Denormalize
-	c_rarity := map[string][]string{}
-	c_sets := map[string][]string{}
-
-	for _, set := range collection {
-		sets = append(sets, TransformSet(set))
-
-		for _, card := range set.Cards {
-			newcard := TransformCard(card)
-			newedition := TransformEdition(set, card)
-
-			if _, found := ids[newcard.Id]; !found {
-				ids[newcard.Id] = newcard
-				cards = append(cards, newcard)
-			}
-
-			c_sets[newcard.Id] = append(c_sets[newcard.Id], newedition.SetId)
-			c_rarity[newcard.Id] = append(c_rarity[newcard.Id], newedition.Rarity)
-
-			editions = append(editions, newedition)
-		}
-	}
-
-	for i, c := range cards {
-		cards[i].Sets = UniqueToLower(c_sets[c.Id])
-		cards[i].Rarities = UniqueToLower(c_rarity[c.Id])
-	}
-
-	return sets, cards, editions
-}
-
 func CreateStringArray(values []string) string {
 	return "{" + strings.Join(values, ",") + "}"
 }
 
-func (f *Format) CardStatus(c *Card) int {
+func (f *MTGFormat) CardStatus(c *Card) int {
 	for _, card_set := range c.Sets {
 		if card_set == "unh" || card_set == "ugl" {
 			return 0
@@ -661,75 +572,4 @@ func (f *Format) CardStatus(c *Card) int {
 	}
 
 	return 0
-}
-
-// Given an array of cards, load them into the database
-func (db *Database) Load(collection MTGCollection) error {
-	tx := db.conn.MustBegin()
-
-	sets, cards, editions := TransformCollection(collection)
-
-	modern, err := LoadFormat("formats/modern.json")
-
-	if err != nil {
-		return err
-	}
-
-	standard, err := LoadFormat("formats/standard.json")
-
-	if err != nil {
-		return err
-	}
-
-	vintage, err := LoadFormat("formats/vintage.json")
-
-	if err != nil {
-		return err
-	}
-
-	legacy, err := LoadFormat("formats/legacy.json")
-
-	if err != nil {
-		return err
-	}
-
-	commander, err := LoadFormat("formats/commander.json")
-
-	if err != nil {
-		return err
-	}
-
-	for _, set := range sets {
-		// Not sure how to handle failure here
-		_, err := tx.NamedExec("INSERT INTO sets (id, name, border, type) VALUES (:id, :name, :border, :type)", &set)
-
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	for _, c := range cards {
-		// Not sure how to handle failure here
-		_, err := tx.Exec("INSERT INTO cards (cid, name, mana_cost, toughness, power, types, subtypes, supertypes, colors, cmc, rules, loyalty, rarities, sets, modern, standard, vintage, legacy, commander) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)", c.Id, c.Name, c.ManaCost, c.Toughness, c.Power, CreateStringArray(c.Types), CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes), CreateStringArray(c.Colors), c.ConvertedCost, c.Text, c.Loyalty, CreateStringArray(c.Rarities), CreateStringArray(c.Sets), modern.CardStatus(&c), standard.CardStatus(&c), vintage.CardStatus(&c), legacy.CardStatus(&c), commander.CardStatus(&c))
-
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-
-	}
-
-	for _, edition := range editions {
-		// Not sure how to handle failure here
-		_, err := tx.NamedExec("INSERT INTO editions (eid, card_id, set_name, watermark, rarity, border, artist, flavor, set_number, layout, set_id) VALUES (:eid, :card_id, :set_name, :watermark, :rarity, :border, :artist, :flavor, :set_number, :layout, :set_id)", &edition)
-
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-
-	}
-
-	return tx.Commit()
 }

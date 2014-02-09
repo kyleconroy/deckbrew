@@ -1,11 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/codegangsta/martini"
 	"github.com/codegangsta/martini-contrib/gzip"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"net/url"
@@ -26,33 +28,35 @@ func GetHostname() string {
 
 // Import this eventually
 type Card struct {
-	Name             string            `json:"name" db:"name"`
-	Id               string            `json:"id" db:"cid"`
-	Href             string            `json:"url,omitempty"`
-	JoinedTypes      string            `json:"-" db:"types"`
-	JoinedSupertypes string            `json:"-" db:"supertypes"`
-	JoinedSubtypes   string            `json:"-" db:"subtypes"`
-	JoinedColors     string            `json:"-" db:"colors"`
-	Types            []string          `json:"types,omitempty" db:"-"`
-	Supertypes       []string          `json:"supertypes,omitempty" db:"-"`
-	Subtypes         []string          `json:"subtypes,omitempty" db:"-"`
-	Colors           []string          `json:"colors,omitempty" db:"-"`
-	Rarities         []string          `json:"-" db:"-"`
-	Sets             []string          `json:"-" db:"-"`
-	ConvertedCost    int               `json:"cmc" db:"cmc"`
-	ManaCost         string            `json:"cost" db:"mana_cost"`
-	Text             string            `json:"text" db:"rules"`
-	Power            string            `json:"power,omitempty" db:"power"`
-	Toughness        string            `json:"toughness,omitempty" db:"toughness"`
-	Loyalty          int               `json:"loyalty,omitempty" db:"loyalty"`
-	Standard         int               `json:"-"`
-	Commander        int               `json:"-"`
-	Modern           int               `json:"-"`
-	Legacy           int               `json:"-"`
-	Vintage          int               `json:"-"`
-	Classic          int               `json:"-"`
-	Formats          map[string]string `json:"formats" db:"-"`
-	Editions         []Edition         `json:"editions,omitempty"`
+	Name             string    `json:"name" db:"name"`
+	Id               string    `json:"id" db:"cid"`
+	Href             string    `json:"url,omitempty"`
+	JoinedTypes      string    `json:"-" db:"types"`
+	JoinedSupertypes string    `json:"-" db:"supertypes"`
+	JoinedSubtypes   string    `json:"-" db:"subtypes"`
+	JoinedColors     string    `json:"-" db:"colors"`
+	Types            []string  `json:"types,omitempty" db:"-"`
+	Supertypes       []string  `json:"supertypes,omitempty" db:"-"`
+	Subtypes         []string  `json:"subtypes,omitempty" db:"-"`
+	Colors           []string  `json:"colors,omitempty" db:"-"`
+	Rarities         []string  `json:"-" db:"-"`
+	Sets             []string  `json:"-" db:"-"`
+	ConvertedCost    int       `json:"cmc" db:"cmc"`
+	ManaCost         string    `json:"cost" db:"mana_cost"`
+	Text             string    `json:"text" db:"rules"`
+	Power            string    `json:"power,omitempty" db:"power"`
+	Toughness        string    `json:"toughness,omitempty" db:"toughness"`
+	Loyalty          int       `json:"loyalty,omitempty" db:"loyalty"`
+	Standard         int       `json:"-"`
+	Commander        int       `json:"-"`
+	Modern           int       `json:"-"`
+	Legacy           int       `json:"-"`
+	Vintage          int       `json:"-"`
+	Classic          int       `json:"-"`
+	Formats          []string  `json:"formats" db:"-"`
+	Status           []string  `json:"status" db:"-"`
+	Editions         []Edition `json:"editions,omitempty"`
+	FormatMap        map[string]string
 }
 
 func explode(types string) []string {
@@ -70,12 +74,12 @@ func (c *Card) fillFormat(format string, legal int) {
 		3: "banned",
 	}
 
-	if c.Formats == nil {
-		c.Formats = map[string]string{}
+	if c.FormatMap == nil {
+		c.FormatMap = map[string]string{}
 	}
 
 	if legal > 0 && legal < 4 {
-		c.Formats[format] = formats[legal]
+		c.FormatMap[format] = formats[legal]
 	}
 }
 
@@ -142,18 +146,18 @@ func Errors(errors ...string) ApiError {
 	return ApiError{Errors: errors}
 }
 
-func LinkHeader(host string, u *url.URL, q Query) string {
-	if q.Page == 0 {
+func LinkHeader(host string, u *url.URL, page int) string {
+	if page == 0 {
 		qstring := u.Query()
 		qstring.Set("page", "1")
 		return fmt.Sprintf("<%s%s?%s>; rel=\"next\"", host, u.Path, qstring.Encode())
 	} else {
 		qstring := u.Query()
 
-		qstring.Set("page", strconv.Itoa(q.Page-1))
+		qstring.Set("page", strconv.Itoa(page-1))
 		prev := fmt.Sprintf("<%s%s?%s>; rel=\"prev\"", host, u.Path, qstring.Encode())
 
-		qstring.Set("page", strconv.Itoa(q.Page+1))
+		qstring.Set("page", strconv.Itoa(page+1))
 		next := fmt.Sprintf("<%s%s?%s>; rel=\"next\"", host, u.Path, qstring.Encode())
 
 		return prev + ", " + next
@@ -164,22 +168,65 @@ type ApiError struct {
 	Errors []string `json:"errors"`
 }
 
-func GetCards(db *Database, req *http.Request, w http.ResponseWriter) (int, []byte) {
-	q, err := NewQuery(req.URL)
+func specialFetch(db *sql.DB, cond Condition) ([]Card, error) {
+	cards := []Card{}
+
+	query := Select("record").From("cards").Where(cond).Limit(100).OrderBy("name", true)
+
+	ql, items, err := query.ToSql()
+
+	if err != nil {
+		return cards, err
+	}
+
+	log.Println(ql, items)
+
+	rows, err := db.Query(ql, items...)
+
+	if err != nil {
+		return cards, err
+	}
+
+	for rows.Next() {
+		var blob []byte
+		var card Card
+
+		if err := rows.Scan(&blob); err != nil {
+			return cards, err
+		}
+
+		err = json.Unmarshal(blob, &card)
+
+		if err != nil {
+			return cards, err
+		}
+
+		cards = append(cards, card)
+	}
+
+	if err := rows.Err(); err != nil {
+		return cards, err
+	}
+
+	return cards, nil
+}
+
+func GetCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []byte) {
+	cond, err, errors := ParseSearch(req.URL)
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusBadRequest, Errors(err.Error()))
+		return JSON(http.StatusBadRequest, Errors(errors...))
 	}
 
-	cards, err := db.FetchCards(q)
+	cards, err := specialFetch(db, cond)
 
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors("Cards not found"))
 	}
 
-	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, q))
+	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, 0))
 
 	return JSON(http.StatusOK, cards)
 }
@@ -287,7 +334,7 @@ func Placeholder(params martini.Params) string {
 	return "Hello world!"
 }
 
-func NewApi(db *Database) *martini.Martini {
+func NewApi() *martini.Martini {
 	m := martini.New()
 
 	// Setup middleware
@@ -320,28 +367,24 @@ func NewApi(db *Database) *martini.Martini {
 	//r.Get("/mtg/editions", GetEditions)
 
 	m.Action(r.Handle)
-	m.Map(db)
-
 	return m
 }
 
 func main() {
 	flag.Parse()
 
-	db, err := Open("postgres://urza:power9@localhost/deckbrew?sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://urza:power9@localhost/deckbrew?sslmode=disable")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	if db.Ping() != nil {
+		log.Fatal(db.Ping())
+	}
+
 	if flag.Arg(0) == "load" {
-		collection, err := LoadCollection(flag.Arg(1))
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = db.Load(collection)
+		err := FillDatabase(db, flag.Arg(1))
 
 		if err != nil {
 			log.Fatal(err)
@@ -351,6 +394,7 @@ func main() {
 		return
 	}
 
-	m := NewApi(&db)
+	m := NewApi()
+	m.Map(db)
 	m.Run()
 }

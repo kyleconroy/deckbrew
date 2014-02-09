@@ -100,6 +100,10 @@ func Overlap(column string, val interface{}) Condition {
 	return comparison{column: column, operator: "&&", val: val}
 }
 
+func Contains(column string, val interface{}) Condition {
+	return comparison{column: column, operator: "@>", val: val}
+}
+
 func ILike(column string, val interface{}) Condition {
 	return comparison{column: column, operator: "ILIKE", val: val}
 }
@@ -149,11 +153,14 @@ func (e Expression) ToSql() (string, []interface{}, error) {
 			return sql, params, nil
 		}
 
+        if sql != "" {
+
 		sql = sql + " WHERE " + csql
 
 		for _, arg := range args {
 			params = append(params, arg)
 		}
+        }
 	}
 
 	if e.By != "" {
@@ -176,6 +183,20 @@ func (e Expression) ToSql() (string, []interface{}, error) {
 	sql = fmt.Sprintf(sql, counts...)
 
 	return sql, params, nil
+}
+
+// This doesn't match Select at all
+func Insert(columns []string, table string) string {
+	values := []string{}
+
+	for i := range columns {
+		values = append(values, "$"+strconv.Itoa(i+1))
+	}
+
+	c := strings.Join(columns, ",")
+	v := strings.Join(values, ",")
+
+	return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, c, v)
 }
 
 func Select(fields ...string) Expression {

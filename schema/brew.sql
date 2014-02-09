@@ -1,7 +1,7 @@
 CREATE EXTENSION pg_trgm;
 
 CREATE TABLE cards (
-    cid               varchar(32) primary key,
+    id                varchar(32) primary key,
     name              varchar(200) DEFAULT '',
     mana_cost         varchar(45) DEFAULT '',
     toughness         varchar(6) DEFAULT '',
@@ -12,6 +12,7 @@ CREATE TABLE cards (
     subtypes          varchar(100)[] DEFAULT '{}',
     supertypes        varchar(100)[] DEFAULT '{}',
     colors            varchar(5)[] DEFAULT '{}',
+    record            text DEFAULT '',
     rules             text DEFAULT '',
     loyalty           integer DEFAULT 0,
     cmc               integer DEFAULT 0,
@@ -23,7 +24,7 @@ CREATE TABLE cards (
     classic           smallint DEFAULT 0
 );
 
-CREATE INDEX cards_name_id ON cards(cid);
+CREATE INDEX cards_name_id ON cards(id);
 CREATE INDEX cards_power_index ON cards(power);
 CREATE INDEX cards_toughness_index ON cards(toughness);
 CREATE INDEX cards_types_index ON cards USING GIN(types);
@@ -32,6 +33,7 @@ CREATE INDEX cards_supertypes_index ON cards USING GIN(supertypes);
 CREATE INDEX cards_colors_index ON cards USING GIN(colors);
 CREATE INDEX cards_sets_index ON cards USING GIN(sets);
 CREATE INDEX cards_rarities_index ON cards USING GIN(rarities);
+CREATE INDEX cards_names_sort_index ON cards(name);
 CREATE INDEX cards_names_index ON cards USING GIN(name gin_trgm_ops);
 CREATE INDEX cards_rules_index ON cards USING GIN(rules gin_trgm_ops);
 
@@ -50,27 +52,8 @@ CREATE TABLE sets (
     type              varchar(32) DEFAULT ''
 );
 
-CREATE TABLE editions (
-    eid                integer DEFAULT 0, 
-    card_id           varchar(32) DEFAULT '',
-    flavor            text DEFAULT '',
-    border            varchar(10) DEFAULT '',
-    set_number        varchar(10) DEFAULT '',
-    layout            varchar(16) DEFAULT '',
-    artist            text DEFAULT '',
-    set_id            varchar(3) DEFAULT '',
-    set_name          varchar(100) DEFAULT '',
-    watermark         varchar(20) DEFAULT '',
-    rarity            varchar(15) DEFAULT ''
-);
-
-CREATE INDEX editions_id_index ON editions(eid);
-CREATE INDEX editions_cardid_index ON editions(card_id);
-CREATE INDEX editions_rarity_index ON editions(rarity);
-CREATE INDEX editions_set_id_index ON editions(set_id);
-CREATE INDEX editions_layout_index ON editions(layout);
+CREATE INDEX sets_type_index ON sets(type);
+CREATE INDEX sets_border_index ON sets(border);
 
 GRANT ALL PRIVILEGES ON TABLE cards TO urza;
 GRANT ALL PRIVILEGES ON TABLE sets TO urza;
-GRANT ALL PRIVILEGES ON TABLE editions TO urza;
-

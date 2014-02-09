@@ -1,6 +1,6 @@
 .PHONY: deps server test syncdb serverdb ami
 
-brewapi: api.go mtgjson.go database.go qc.go 
+brewapi: api.go mtgjson.go database.go qc.go etl.go search.go
 	go build -o brewapi
 
 deps:
