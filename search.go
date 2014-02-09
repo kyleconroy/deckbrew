@@ -21,6 +21,26 @@ type Search struct {
 	Args       url.Values
 }
 
+func (s *Search) extractPattern(searchTerm, key string) error {
+	or := []Condition{}
+
+	for _, oracle := range s.Args[key] {
+		if oracle == "" {
+			continue
+		}
+		if strings.ContainsAny(oracle, "% & _") {
+			return fmt.Errorf("Search string can't contain % or _")
+		}
+		or = append(or, ILike(searchTerm, "%"+oracle+"%"))
+	}
+
+	if len(or) > 0 {
+		s.Conditions = append(s.Conditions, Or(or...))
+	}
+
+	return nil
+}
+
 func (s *Search) extractStrings(searchTerm, key string, allowed map[string]bool) error {
 	items := s.Args[searchTerm]
 
@@ -48,19 +68,7 @@ func (s *Search) addQuery(key string, items []string) error {
 }
 
 func (s *Search) ParseMultiverseId() error {
-	mid := s.Args.Get("multiverseid")
-
-	if mid == "" {
-		return nil
-	}
-
-	_, err := strconv.Atoi(mid)
-
-	if err == nil {
-		//s.Query["editions.multiverseid"] = id
-	}
-
-	return err
+	return s.addQuery("mids", s.Args["multiverseid"])
 }
 
 func (s *Search) ParseSupertypes() error {
@@ -120,7 +128,7 @@ func (s *Search) ParseRarity() error {
 }
 
 func (s *Search) ParseTypes() error {
-	err := s.extractStrings("type", "types", map[string]bool{
+	return s.extractStrings("type", "types", map[string]bool{
 		"creature":     true,
 		"land":         true,
 		"tribal":       true,
@@ -135,29 +143,14 @@ func (s *Search) ParseTypes() error {
 		"plane":        true,
 		"scheme":       true,
 	})
+}
 
-	if err != nil {
-		return err
-	}
-
-	//if _, set := s.Query["types"]; !set {
-	//	s.Query["types"] = map[string][]string{
-	//		"$in": []string{"creature", "land", "enchantment",
-	//			"sorcery", "instant", "planeswalker", "artifact"},
-	//	}
-	//}
-
-	return nil
+func (s *Search) ParseName() error {
+	return s.extractPattern("name", "name")
 }
 
 func (s *Search) ParseText() error {
-	oracle := s.Args.Get("oracle")
-
-	if oracle != "" {
-		s.Conditions = append(s.Conditions, ILike("rules", "%"+oracle+"%"))
-	}
-
-	return nil
+	return s.extractPattern("rules", "oracle")
 }
 
 func ParseSearch(u *url.URL) (Condition, error, []string) {
@@ -174,6 +167,7 @@ func ParseSearch(u *url.URL) (Condition, error, []string) {
 		search.ParseStatus(),
 		search.ParseSets(),
 		search.ParseText(),
+		search.ParseName(),
 	}
 
 	var err error

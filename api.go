@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func GetHostname() string {
@@ -28,73 +27,70 @@ func GetHostname() string {
 
 // Import this eventually
 type Card struct {
-	Name             string    `json:"name" db:"name"`
-	Id               string    `json:"id" db:"cid"`
-	Href             string    `json:"url,omitempty"`
-	JoinedTypes      string    `json:"-" db:"types"`
-	JoinedSupertypes string    `json:"-" db:"supertypes"`
-	JoinedSubtypes   string    `json:"-" db:"subtypes"`
-	JoinedColors     string    `json:"-" db:"colors"`
-	Types            []string  `json:"types,omitempty" db:"-"`
-	Supertypes       []string  `json:"supertypes,omitempty" db:"-"`
-	Subtypes         []string  `json:"subtypes,omitempty" db:"-"`
-	Colors           []string  `json:"colors,omitempty" db:"-"`
-	Rarities         []string  `json:"-" db:"-"`
-	Sets             []string  `json:"-" db:"-"`
-	ConvertedCost    int       `json:"cmc" db:"cmc"`
-	ManaCost         string    `json:"cost" db:"mana_cost"`
-	Text             string    `json:"text" db:"rules"`
-	Power            string    `json:"power,omitempty" db:"power"`
-	Toughness        string    `json:"toughness,omitempty" db:"toughness"`
-	Loyalty          int       `json:"loyalty,omitempty" db:"loyalty"`
-	Standard         int       `json:"-"`
-	Commander        int       `json:"-"`
-	Modern           int       `json:"-"`
-	Legacy           int       `json:"-"`
-	Vintage          int       `json:"-"`
-	Classic          int       `json:"-"`
-	Formats          []string  `json:"formats" db:"-"`
-	Status           []string  `json:"status" db:"-"`
-	Editions         []Edition `json:"editions,omitempty"`
-	FormatMap        map[string]string
+	Name          string            `json:"name"`
+	Id            string            `json:"id"`
+	Href          string            `json:"url,omitempty"`
+	Types         []string          `json:"types,omitempty"`
+	Supertypes    []string          `json:"supertypes,omitempty"`
+	Subtypes      []string          `json:"subtypes,omitempty"`
+	Colors        []string          `json:"colors,omitempty"`
+	FormatMap     map[string]string `json:"formats"`
+	ConvertedCost int               `json:"cmc"`
+	ManaCost      string            `json:"cost"`
+	Text          string            `json:"text"`
+	Power         string            `json:"power,omitempty"`
+	Toughness     string            `json:"toughness,omitempty"`
+	Loyalty       int               `json:"loyalty,omitempty"`
+	Editions      []Edition         `json:"editions,omitempty"`
 }
 
-func explode(types string) []string {
-	if types == "" {
-		return []string{}
-	} else {
-		return strings.Split(types, ",")
+func (c *Card) Sets() []string {
+	sets := []string{}
+	for _, e := range c.Editions {
+		sets = append(sets, e.SetId)
 	}
+	return ToUniqueLower(sets)
 }
 
-func (c *Card) fillFormat(format string, legal int) {
-	formats := map[int]string{
-		1: "legal",
-		2: "restricted",
-		3: "banned",
+func (c *Card) Formats() []string {
+	v := []string{}
+	for format, _ := range c.FormatMap {
+		v = append(v, format)
 	}
-
-	if c.FormatMap == nil {
-		c.FormatMap = map[string]string{}
-	}
-
-	if legal > 0 && legal < 4 {
-		c.FormatMap[format] = formats[legal]
-	}
+	return ToUniqueLower(v)
 }
+
+func (c *Card) Status() []string {
+	v := []string{}
+	for _, status := range c.FormatMap {
+		v = append(v, status)
+	}
+	return ToUniqueLower(v)
+}
+
+func (c *Card) Rarities() []string {
+	r := []string{}
+	for _, e := range c.Editions {
+		r = append(r, e.Rarity)
+	}
+	return ToUniqueLower(r)
+}
+
+func (c *Card) MultiverseIds() []string {
+	r := []string{}
+	for _, e := range c.Editions {
+		r = append(r, strconv.Itoa(e.MultiverseId))
+	}
+	return ToUniqueLower(r)
+}
+
 
 func (c *Card) Fill() {
 	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
-	c.Types = explode(c.JoinedTypes)
-	c.Supertypes = explode(c.JoinedSupertypes)
-	c.Subtypes = explode(c.JoinedSubtypes)
-	c.Colors = explode(c.JoinedColors)
 
-	c.fillFormat("vintage", c.Vintage)
-	c.fillFormat("legacy", c.Legacy)
-	c.fillFormat("commander", c.Commander)
-	c.fillFormat("modern", c.Modern)
-	c.fillFormat("standard", c.Standard)
+    for i, _ := range c.Editions {
+            c.Editions[i].Fill()
+ }
 }
 
 type Edition struct {
@@ -115,7 +111,7 @@ type Edition struct {
 }
 
 func (e *Edition) Fill() {
-	e.Href = fmt.Sprintf("%s/mtg/editions/%d", GetHostname(), e.MultiverseId)
+	e.Href = fmt.Sprintf("%s/mtg/cards?multiverseid=%d", GetHostname(), e.MultiverseId)
 	e.SetUrl = fmt.Sprintf("%s/mtg/sets/%s", GetHostname(), e.SetId)
 	e.ImageUrl = fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", e.MultiverseId)
 }
@@ -168,6 +164,7 @@ type ApiError struct {
 	Errors []string `json:"errors"`
 }
 
+// FIXME: What the fuck to do with this?
 func specialFetch(db *sql.DB, cond Condition) ([]Card, error) {
 	cards := []Card{}
 
@@ -200,6 +197,8 @@ func specialFetch(db *sql.DB, cond Condition) ([]Card, error) {
 		if err != nil {
 			return cards, err
 		}
+
+        card.Fill()
 
 		cards = append(cards, card)
 	}
@@ -263,8 +262,8 @@ func GetSubtypes(db *Database) (int, []byte) {
 	return JSON(http.StatusOK, types)
 }
 
-func GetTypes(db *Database) (int, []byte) {
-	types, err := db.FetchTerms("types")
+func GetTypes(db *sql.DB) (int, []byte) {
+	types, err := FetchTerms(db, "types")
 
 	if err != nil {
 		log.Println(err)

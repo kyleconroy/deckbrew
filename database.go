@@ -1,11 +1,10 @@
 package main
 
 import (
-	"crypto/md5"
+	"database/sql"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"io"
 	"net/url"
 	"regexp"
 	"sort"
@@ -418,6 +417,28 @@ type StringRow struct {
 	T string
 }
 
+func FetchTerms(db *sql.DB, term string) ([]string, error) {
+	result := []string{}
+
+	rows, err := db.Query("select distinct unnest(" + term + ") as t from cards WHERE NOT sets && '{unh,ugl}' ORDER BY t ASC")
+
+	if err != nil {
+		return result, err
+	}
+
+	for rows.Next() {
+		var term string
+
+		if err := rows.Scan(&term); err != nil {
+			return result, err
+		}
+
+		result = append(result, term)
+	}
+
+	return result, rows.Err()
+}
+
 // SQL Injection possibility! Never call this function with
 // user defined input
 func (db *Database) FetchTerms(term string) ([]string, error) {
@@ -515,12 +536,6 @@ func Open(url string) (Database, error) {
 	return Database{conn: conn}, nil
 }
 
-func makeId(c MTGCard) string {
-	h := md5.New()
-	io.WriteString(h, c.Name+c.ManaCost)
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
 func UniqueToLower(things []string) []string {
 	seen := map[string]bool{}
 	sorted := []string{}
@@ -538,38 +553,4 @@ func UniqueToLower(things []string) []string {
 
 func CreateStringArray(values []string) string {
 	return "{" + strings.Join(values, ",") + "}"
-}
-
-func (f *MTGFormat) CardStatus(c *Card) int {
-	for _, card_set := range c.Sets {
-		if card_set == "unh" || card_set == "ugl" {
-			return 0
-		}
-	}
-
-	for _, b := range f.Banned {
-		if c.Id == b.Id {
-			return 3
-		}
-	}
-
-	for _, r := range f.Restricted {
-		if c.Id == r.Id {
-			return 2
-		}
-	}
-
-	if len(f.Sets) == 0 {
-		return 1
-	}
-
-	for _, card_set := range c.Sets {
-		for _, format_set := range f.Sets {
-			if format_set == card_set {
-				return 1
-			}
-		}
-	}
-
-	return 0
 }

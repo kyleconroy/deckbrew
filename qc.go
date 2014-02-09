@@ -153,14 +153,14 @@ func (e Expression) ToSql() (string, []interface{}, error) {
 			return sql, params, nil
 		}
 
-        if sql != "" {
+		if csql != "()" {
 
-		sql = sql + " WHERE " + csql
+			sql = sql + " WHERE " + csql
 
-		for _, arg := range args {
-			params = append(params, arg)
+			for _, arg := range args {
+				params = append(params, arg)
+			}
 		}
-        }
 	}
 
 	if e.By != "" {

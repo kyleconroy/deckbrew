@@ -74,7 +74,7 @@ func TransformCard(c MTGCard) Card {
 	}
 }
 
-func TransformCollection(collection MTGCollection) ([]Set, []Card) {
+func TransformCollection(collection MTGCollection, formats []MTGFormat) ([]Set, []Card) {
 	cards := []Card{}
 	ids := map[string]Card{}
 	editions := []Edition{}
@@ -104,6 +104,13 @@ func TransformCollection(collection MTGCollection) ([]Set, []Card) {
 		}
 	}
 
+	for _, format := range formats {
+		for i, _ := range cards {
+			AddFormat(&cards[i], &format)
+
+		}
+	}
+
 	return sets, cards
 }
 
@@ -112,10 +119,12 @@ func AddFormat(c *Card, f *MTGFormat) {
 		c.FormatMap = map[string]string{}
 	}
 
-	update := func(cd *Card, set, status string) {
-		cd.FormatMap[set] = status
-		cd.Formats = ToUniqueLower(append(c.Formats, set))
-		cd.Status = ToUniqueLower(append(c.Status, status))
+	for _, special := range []string{"phenomenon", "plane", "scheme", "vanguard"} {
+		for _, t := range c.Types {
+			if t == special {
+				return
+			}
+		}
 	}
 
 	for _, edition := range c.Editions {
@@ -126,27 +135,27 @@ func AddFormat(c *Card, f *MTGFormat) {
 
 	for _, b := range f.Banned {
 		if c.Id == b.Id {
-			update(c, f.Name, "banned")
+			c.FormatMap[f.Name] = "banned"
 			return
 		}
 	}
 
 	for _, r := range f.Restricted {
 		if c.Id == r.Id {
-			update(c, f.Name, "restricted")
+			c.FormatMap[f.Name] = "restricted"
 			return
 		}
 	}
 
 	if len(f.Sets) == 0 {
-		update(c, f.Name, "legal")
+		c.FormatMap[f.Name] = "legal"
 		return
 	}
 
 	for _, edition := range c.Editions {
 		for _, format_set := range f.Sets {
 			if strings.ToUpper(format_set) == strings.ToUpper(edition.SetId) {
-				update(c, f.Name, "legal")
+				c.FormatMap[f.Name] = "legal"
 				return
 			}
 		}
@@ -161,7 +170,13 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 		return err
 	}
 
-	sets, cards := TransformCollection(collection)
+	formats, err := LoadFormats()
+
+	if err != nil {
+		return err
+	}
+
+	sets, cards := TransformCollection(collection, formats)
 
 	for _, s := range sets {
 		_, err := tx.Exec("INSERT INTO sets (id, name, border, type) VALUES ($1, $2, $3, $4)",
@@ -183,30 +198,38 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 		}
 
 		columns := []string{
-			"id", "name", "record", "rules",
-            "rarities", "types",
-            "subtypes", "supertypes",
-			"colors", "sets",
+			"id", "name", "record", "rules", "mana_cost", "cmc",
+			"power", "toughness", "loyalty", "rarities", "types",
+			"subtypes", "supertypes", "colors", "sets", "formats",
+			"status", "mids",
 		}
 
 		q := Insert(columns, "cards")
 
-		_, err = tx.Exec(q, c.Id, c.Name, blob, c.Text,
-                CreateStringArray(c.Rarities), CreateStringArray(c.Types),
-                CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes),
-                CreateStringArray(c.Colors), CreateStringArray(c.Sets))
+		_, err = tx.Exec(q, c.Id, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
+			c.Power, c.Toughness, c.Loyalty,
+			CreateStringArray(c.Rarities()), CreateStringArray(c.Types),
+			CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes),
+			CreateStringArray(c.Colors), CreateStringArray(c.Sets()),
+			CreateStringArray(c.Formats()), CreateStringArray(c.Status()),
+			CreateStringArray(c.MultiverseIds()))
 
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
-
 	}
 
 	return tx.Commit()
 }
 
-func LoadFormats(paths ...string) ([]MTGFormat, error) {
+func LoadFormats() ([]MTGFormat, error) {
+	paths := []string{
+		"formats/vintage.json", "formats/legacy.json",
+		"formats/commander.json", "formats/standard.json",
+		"formats/modern.json",
+	}
+
 	formats := []MTGFormat{}
 
 	for _, path := range paths {
