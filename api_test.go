@@ -34,7 +34,7 @@ func TestApi(t *testing.T) {
 	}
 
 	m := NewApi()
-    m.Map(db)
+	m.Map(db)
 
 	ts := httptest.NewServer(m)
 	defer ts.Close()

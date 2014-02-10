@@ -21,7 +21,7 @@ test: cards.json
 	go test -v
 
 syncdb: brewapi cards.json 
-	./brewapi load cards.json
+	DECKBREW_HOSTNAME="http://localhost:3000" ./brewapi load cards.json
 
 ami: deckbrew
 	packer build template.json

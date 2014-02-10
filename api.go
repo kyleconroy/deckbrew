@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 )
+
 func GetHostname() string {
 	hostname := os.Getenv("DECKBREW_HOSTNAME")
 
@@ -23,7 +24,6 @@ func GetHostname() string {
 
 	return hostname
 }
-
 
 // Import this eventually
 type Card struct {
@@ -217,16 +217,16 @@ func HandleSet(db *sql.DB, params martini.Params) (int, []byte) {
 }
 
 func HandleTerm(term string) func(*sql.DB) (int, []byte) {
-    return func(db *sql.DB) (int, []byte) {
-	terms, err := FetchTerms(db, term)
+	return func(db *sql.DB) (int, []byte) {
+		terms, err := FetchTerms(db, term)
 
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors(term + " not found"))
+		if err != nil {
+			log.Println(err)
+			return JSON(http.StatusNotFound, Errors(term+" not found"))
+		}
+
+		return JSON(http.StatusOK, terms)
 	}
-
-	return JSON(http.StatusOK, terms)
-    }
 }
 
 type Pong struct {

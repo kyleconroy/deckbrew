@@ -109,12 +109,12 @@ func TransformCollection(collection MTGCollection, formats []MTGFormat) ([]Set, 
 				cards[i].Editions = append(cards[i].Editions, edition)
 			}
 		}
+		cards[i].Fill()
 	}
 
 	for _, format := range formats {
 		for i, _ := range cards {
 			AddFormat(&cards[i], &format)
-
 		}
 	}
 
