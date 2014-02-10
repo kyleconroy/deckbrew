@@ -38,6 +38,16 @@ func ToUniqueLower(things []string) []string {
 	return sorted
 }
 
+func transformRarity(rarity string) string {
+        r := strings.ToLower(rarity)
+
+        if r == "mythic rare" {
+                return "mythic"
+        }
+
+        return r
+}
+
 func TransformEdition(s MTGSet, c MTGCard) Edition {
 	return Edition{
 		Set:          s.Name,
@@ -45,7 +55,7 @@ func TransformEdition(s MTGSet, c MTGCard) Edition {
 		Flavor:       c.Flavor,
 		MultiverseId: c.MultiverseId,
 		Watermark:    c.Watermark,
-		Rarity:       strings.ToLower(c.Rarity),
+		Rarity:       transformRarity(c.Rarity),
 		Artist:       c.Artist,
 		Border:       c.Border,
 		Layout:       c.Layout,
