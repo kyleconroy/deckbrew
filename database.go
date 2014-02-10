@@ -33,10 +33,6 @@ func GetDatabase() (*sql.DB, error) {
 		return db, err
 	}
 
-	if db.Ping() != nil {
-		log.Println("Can't connect using regular connection")
-		return db, db.Ping()
-	}
 	return db, nil
 }
 

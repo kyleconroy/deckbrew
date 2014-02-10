@@ -25,7 +25,7 @@ $(error The DATABASE_USER environment variable is not set)
 endif
 	packer build template.json
 
-deckbrew: Makefile *.go schema/*.sql
+deckbrew: Makefile *.go
 	mkdir -p deckbrew
 	cp *.go deckbrew
 	cp -r formats deckbrew
