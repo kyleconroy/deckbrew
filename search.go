@@ -36,8 +36,8 @@ func (s *Search) extractPattern(searchTerm, key string) error {
 		if oracle == "" {
 			continue
 		}
-		if strings.ContainsAny(oracle, "% & _") {
-			return fmt.Errorf("Search string can't contain % or _")
+		if strings.ContainsAny(oracle, "%_") {
+			return fmt.Errorf("Search string can't contain '%%' or '_'")
 		}
 		or = append(or, ILike(searchTerm, "%"+oracle+"%"))
 	}
@@ -60,6 +60,7 @@ func (s *Search) extractStrings(searchTerm, key string, allowed map[string]bool)
 
 	return s.addQuery(key, items)
 }
+
 
 func (s *Search) addQuery(key string, items []string) error {
 	if len(items) == 0 {
