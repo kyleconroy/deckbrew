@@ -14,18 +14,6 @@ import (
 	"os"
 	"strconv"
 )
-
-func GetDatabaseURL() (string, error) {
-	user := os.Getenv("DATABASE_USER")
-	pass := os.Getenv("DATABASE_PASSWORD")
-
-	if user == "" || pass == "" {
-		return "", fmt.Errorf("DATABASE_USER and DATABASE_PASSWORD need to be set")
-	}
-
-	return fmt.Sprintf("postgres://%s:%s@localhost/deckbrew?sslmode=disable", user, pass), nil
-}
-
 func GetHostname() string {
 	hostname := os.Getenv("DECKBREW_HOSTNAME")
 
@@ -36,24 +24,6 @@ func GetHostname() string {
 	return hostname
 }
 
-func GetDatabase() (*sql.DB, error) {
-	u, err := GetDatabaseURL()
-
-	if err != nil {
-		return nil, err
-	}
-
-	db, err := sql.Open("postgres", u)
-
-	if err != nil {
-		return db, err
-	}
-
-	if db.Ping() != nil {
-		return db, db.Ping()
-	}
-	return db, nil
-}
 
 // Import this eventually
 type Card struct {
@@ -193,53 +163,7 @@ type ApiError struct {
 	Errors []string `json:"errors"`
 }
 
-// FIXME: What the fuck to do with this?
-func specialFetch(db *sql.DB, cond Condition) ([]Card, error) {
-	cards := []Card{}
-
-	query := Select("record").From("cards").Where(cond).Limit(100).OrderBy("name", true)
-
-	ql, items, err := query.ToSql()
-
-	if err != nil {
-		return cards, err
-	}
-
-	log.Println(ql, items)
-
-	rows, err := db.Query(ql, items...)
-
-	if err != nil {
-		return cards, err
-	}
-
-	for rows.Next() {
-		var blob []byte
-		var card Card
-
-		if err := rows.Scan(&blob); err != nil {
-			return cards, err
-		}
-
-		err = json.Unmarshal(blob, &card)
-
-		if err != nil {
-			return cards, err
-		}
-
-		card.Fill()
-
-		cards = append(cards, card)
-	}
-
-	if err := rows.Err(); err != nil {
-		return cards, err
-	}
-
-	return cards, nil
-}
-
-func GetCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []byte) {
+func HandleCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []byte) {
 	cond, err, errors := ParseSearch(req.URL)
 
 	if err != nil {
@@ -247,7 +171,7 @@ func GetCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []byte
 		return JSON(http.StatusBadRequest, Errors(errors...))
 	}
 
-	cards, err := specialFetch(db, cond)
+	cards, err := FetchCards(db, cond)
 
 	if err != nil {
 		log.Println(err)
@@ -258,52 +182,20 @@ func GetCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []byte
 
 	return JSON(http.StatusOK, cards)
 }
-func GetSupertypes(db *Database) (int, []byte) {
-	types, err := db.FetchTerms("supertypes")
+
+func HandleCard(db *sql.DB, params martini.Params) (int, []byte) {
+	card, err := FetchCard(db, params["id"])
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Supertypes not found"))
+		return JSON(http.StatusNotFound, Errors("Card not found"))
 	}
 
-	return JSON(http.StatusOK, types)
+	return JSON(http.StatusOK, card)
 }
 
-func GetColors(db *Database) (int, []byte) {
-	types, err := db.FetchTerms("colors")
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Colors not found"))
-	}
-
-	return JSON(http.StatusOK, types)
-}
-
-func GetSubtypes(db *Database) (int, []byte) {
-	types, err := db.FetchTerms("subtypes")
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Subtypes not found"))
-	}
-
-	return JSON(http.StatusOK, types)
-}
-
-func GetTypes(db *sql.DB) (int, []byte) {
-	types, err := FetchTerms(db, "types")
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Types not found"))
-	}
-
-	return JSON(http.StatusOK, types)
-}
-
-func GetSets(db *Database) (int, []byte) {
-	sets, err := db.FetchSets()
+func HandleSets(db *sql.DB) (int, []byte) {
+	sets, err := FetchSets(db)
 
 	if err != nil {
 		log.Println(err)
@@ -313,8 +205,8 @@ func GetSets(db *Database) (int, []byte) {
 	return JSON(http.StatusOK, sets)
 }
 
-func GetSet(db *Database, params martini.Params) (int, []byte) {
-	card, err := db.FetchSet(params["id"])
+func HandleSet(db *sql.DB, params martini.Params) (int, []byte) {
+	card, err := FetchSet(db, params["id"])
 
 	if err != nil {
 		log.Println(err)
@@ -324,15 +216,17 @@ func GetSet(db *Database, params martini.Params) (int, []byte) {
 	return JSON(http.StatusOK, card)
 }
 
-func GetCard(db *Database, params martini.Params) (int, []byte) {
-	card, err := db.FetchCard(params["id"])
+func HandleTerm(term string) func(*sql.DB) (int, []byte) {
+    return func(db *sql.DB) (int, []byte) {
+	terms, err := FetchTerms(db, term)
 
 	if err != nil {
 		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Card not found"))
+		return JSON(http.StatusNotFound, Errors(term + " not found"))
 	}
 
-	return JSON(http.StatusOK, card)
+	return JSON(http.StatusOK, terms)
+    }
 }
 
 type Pong struct {
@@ -365,14 +259,14 @@ func NewApi() *martini.Martini {
 	r := martini.NewRouter()
 
 	r.Get("/ping", Ping)
-	r.Get("/mtg/cards", GetCards)
-	r.Get("/mtg/cards/:id", GetCard)
-	r.Get("/mtg/sets", GetSets)
-	r.Get("/mtg/sets/:id", GetSet)
-	r.Get("/mtg/colors", GetColors)
-	r.Get("/mtg/supertypes", GetSupertypes)
-	r.Get("/mtg/subtypes", GetSubtypes)
-	r.Get("/mtg/types", GetTypes)
+	r.Get("/mtg/cards", HandleCards)
+	r.Get("/mtg/cards/:id", HandleCard)
+	r.Get("/mtg/sets", HandleSets)
+	r.Get("/mtg/sets/:id", HandleSet)
+	r.Get("/mtg/colors", HandleTerm("colors"))
+	r.Get("/mtg/supertypes", HandleTerm("supertypes"))
+	r.Get("/mtg/subtypes", HandleTerm("subtypes"))
+	r.Get("/mtg/types", HandleTerm("types"))
 	r.NotFound(NotFound)
 
 	//They can just download the mtgjson dump

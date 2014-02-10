@@ -4,11 +4,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	_ "github.com/lib/pq"
-    "os"
 	"log"
+	"os"
 	"sort"
 	"strings"
 )
+
+func CreateStringArray(values []string) string {
+	return "{" + strings.Join(values, ",") + "}"
+}
 
 func ToSortedLower(things []string) []string {
 	sorted := []string{}
@@ -263,10 +267,10 @@ func CreateDatabase(db *sql.DB) {
 	}
 
 	exec(db, "DROP DATABASE IF EXISTS deckbrew")
-	exec(db, "DROP USER IF EXISTS " + user)
+	exec(db, "DROP USER IF EXISTS "+user)
 	exec(db, "CREATE DATABASE deckbrew WITH template=template0 encoding='UTF8'")
-	exec(db, "CREATE USER " + user + " WITH PASSWORD '" + pass + "'")
-	exec(db, "GRANT ALL PRIVILEGES ON DATABASE deckbrew TO " + user)
+	exec(db, "CREATE USER "+user+" WITH PASSWORD '"+pass+"'")
+	exec(db, "GRANT ALL PRIVILEGES ON DATABASE deckbrew TO "+user)
 }
 
 func CreateTables(db *sql.DB) {
@@ -294,7 +298,7 @@ func CreateTables(db *sql.DB) {
         loyalty           integer        DEFAULT 0,
         cmc               integer        DEFAULT 0)`)
 
-    exec(db, `CREATE TABLE sets (
+	exec(db, `CREATE TABLE sets (
         id                varchar(3) primary key,
         name              varchar(200) DEFAULT '',
         border            varchar(40) DEFAULT '',
@@ -319,8 +323,8 @@ func CreateTables(db *sql.DB) {
 	exec(db, "CREATE INDEX sets_type_index ON sets(type)")
 	exec(db, "CREATE INDEX sets_border_index ON sets(border)")
 
-	exec(db, "GRANT ALL PRIVILEGES ON TABLE cards TO " + user)
-	exec(db, "GRANT ALL PRIVILEGES ON TABLE sets TO " + user)
+	exec(db, "GRANT ALL PRIVILEGES ON TABLE cards TO "+user)
+	exec(db, "GRANT ALL PRIVILEGES ON TABLE sets TO "+user)
 }
 
 func SyncDatabase(path string) error {
@@ -351,7 +355,6 @@ func SyncDatabase(path string) error {
 	if err != nil {
 		return err
 	}
-
 
 	err = CreateCollection(db, collection)
 

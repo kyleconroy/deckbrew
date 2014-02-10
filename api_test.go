@@ -9,7 +9,7 @@ import (
 
 func TestLinkHeader(t *testing.T) {
 	url, _ := url.Parse("/cards?foo=bar")
-	header := LinkHeader("http://localhost:3000", url, Query{Page: 0})
+	header := LinkHeader("http://localhost:3000", url, 0)
 	expected := "<http://localhost:3000/cards?foo=bar&page=1>; rel=\"next\""
 
 	if header != expected {
@@ -17,7 +17,7 @@ func TestLinkHeader(t *testing.T) {
 	}
 
 	url, _ = url.Parse("/cards?foo=bar&page=1")
-	header = LinkHeader("http://localhost:3000", url, Query{Page: 1})
+	header = LinkHeader("http://localhost:3000", url, 1)
 	expected = "<http://localhost:3000/cards?foo=bar&page=0>; rel=\"prev\", <http://localhost:3000/cards?foo=bar&page=2>; rel=\"next\""
 
 	if header != expected {
@@ -27,13 +27,14 @@ func TestLinkHeader(t *testing.T) {
 }
 
 func TestApi(t *testing.T) {
-	db, err := Open("postgres://urza:power9@localhost/deckbrew?sslmode=disable")
+	db, err := GetDatabase()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	m := NewApi(&db)
+	m := NewApi()
+    m.Map(db)
 
 	ts := httptest.NewServer(m)
 	defer ts.Close()
@@ -47,7 +48,6 @@ func TestApi(t *testing.T) {
 		"/mtg/cards?name=rats",
 		"/mtg/cards?set=UNH",
 		"/mtg/cards/1cdf2b87355ed978c0c5fe64bfc6a38c",
-		"/mtg/editions/73935",
 		"/mtg/sets",
 		"/mtg/sets/UNH",
 		"/mtg/colors",
