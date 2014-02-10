@@ -93,20 +93,20 @@ func (c *Card) Fill() {
 }
 
 type Edition struct {
-	Set          string `json:"set" db:"set_name"`
-	SetId        string `json:"-" db:"set_id"`
-	CardId       string `json:"-" db:"card_id"`
+	Set          string `json:"set"`
+	SetId        string `json:"-"`
+	CardId       string `json:"-"`
 	Watermark    string `json:"watermark,omitempty"`
 	Rarity       string `json:"rarity"`
 	Border       string `json:"-"`
 	Artist       string `json:"artist"`
-	MultiverseId int    `json:"multiverse_id" db:"eid"`
+	MultiverseId int    `json:"multiverse_id"`
 	Flavor       string `json:"flavor,omitempty"`
-	Number       string `json:"number" db:"set_number"`
+	Number       string `json:"number"`
 	Layout       string `json:"layout"`
-	Href         string `json:"url,omitempty" db:"-"`
-	ImageUrl     string `json:"image_url,omitempty" db:"-"`
-	SetUrl       string `json:"set_url,omitempty" db:"-"`
+	Href         string `json:"url,omitempty"`
+	ImageUrl     string `json:"image_url,omitempty"`
+	SetUrl       string `json:"set_url,omitempty"`
 }
 
 func (e *Edition) Fill() {
@@ -120,11 +120,13 @@ type Set struct {
 	Name   string `json:"name"`
 	Border string `json:"border"`
 	Type   string `json:"type"`
-	Href   string `json:"url" db:"-"`
+	Href   string `json:"url"`
+	CardsUrl   string `json:"cards_url"`
 }
 
 func (s *Set) Fill() {
 	s.Href = fmt.Sprintf("%s/mtg/sets/%s", GetHostname(), s.Id)
+	s.CardsUrl = fmt.Sprintf("%s/mtg/cards?set=%s", GetHostname(), s.Id)
 }
 
 func JSON(code int, val interface{}) (int, []byte) {
