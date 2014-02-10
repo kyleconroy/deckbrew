@@ -32,6 +32,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     chef.json = {
         "deckbrew" => {
+            "database" => {
+              "user" => ENV["DATABASE_USER"],
+              "password" => ENV["DATABASE_PASSWORD"],
+            },
             "hostname" => "http://localhost:6001",
             "event" => "vagrant-ready",
         }

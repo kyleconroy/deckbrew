@@ -15,6 +15,17 @@ import (
 	"strconv"
 )
 
+func GetDatabaseURL() (string, error) {
+	user := os.Getenv("DATABASE_USER")
+	pass := os.Getenv("DATABASE_PASSWORD")
+
+	if user == "" || pass == "" {
+		return "", fmt.Errorf("DATABASE_USER and DATABASE_PASSWORD need to be set")
+	}
+
+	return fmt.Sprintf("postgres://%s:%s@localhost/deckbrew?sslmode=disable", user, pass), nil
+}
+
 func GetHostname() string {
 	hostname := os.Getenv("DECKBREW_HOSTNAME")
 
@@ -23,6 +34,25 @@ func GetHostname() string {
 	}
 
 	return hostname
+}
+
+func GetDatabase() (*sql.DB, error) {
+	u, err := GetDatabaseURL()
+
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := sql.Open("postgres", u)
+
+	if err != nil {
+		return db, err
+	}
+
+	if db.Ping() != nil {
+		return db, db.Ping()
+	}
+	return db, nil
 }
 
 // Import this eventually
@@ -84,13 +114,12 @@ func (c *Card) MultiverseIds() []string {
 	return ToUniqueLower(r)
 }
 
-
 func (c *Card) Fill() {
 	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
 
-    for i, _ := range c.Editions {
-            c.Editions[i].Fill()
- }
+	for i, _ := range c.Editions {
+		c.Editions[i].Fill()
+	}
 }
 
 type Edition struct {
@@ -198,7 +227,7 @@ func specialFetch(db *sql.DB, cond Condition) ([]Card, error) {
 			return cards, err
 		}
 
-        card.Fill()
+		card.Fill()
 
 		cards = append(cards, card)
 	}
@@ -314,23 +343,8 @@ func Ping() (int, []byte) {
 	return JSON(http.StatusOK, Pong{Rally: "serve"})
 }
 
-func GetEdition(db *Database, params martini.Params) (int, []byte) {
-	cards, err := db.FetchEditions(params["id"])
-
-	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Edition not found"))
-	}
-
-	return JSON(http.StatusOK, cards)
-}
-
 func NotFound() (int, []byte) {
 	return JSON(http.StatusNotFound, Errors("No endpoint here"))
-}
-
-func Placeholder(params martini.Params) string {
-	return "Hello world!"
 }
 
 func NewApi() *martini.Martini {
@@ -353,7 +367,6 @@ func NewApi() *martini.Martini {
 	r.Get("/ping", Ping)
 	r.Get("/mtg/cards", GetCards)
 	r.Get("/mtg/cards/:id", GetCard)
-	r.Get("/mtg/editions/:id", GetEdition)
 	r.Get("/mtg/sets", GetSets)
 	r.Get("/mtg/sets/:id", GetSet)
 	r.Get("/mtg/colors", GetColors)
@@ -372,18 +385,8 @@ func NewApi() *martini.Martini {
 func main() {
 	flag.Parse()
 
-	db, err := sql.Open("postgres", "postgres://urza:power9@localhost/deckbrew?sslmode=disable")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if db.Ping() != nil {
-		log.Fatal(db.Ping())
-	}
-
 	if flag.Arg(0) == "load" {
-		err := FillDatabase(db, flag.Arg(1))
+		err := SyncDatabase(flag.Arg(1))
 
 		if err != nil {
 			log.Fatal(err)
@@ -391,6 +394,12 @@ func main() {
 
 		log.Println("Loaded all data into the database")
 		return
+	}
+
+	db, err := GetDatabase()
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	m := NewApi()

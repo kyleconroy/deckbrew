@@ -46,6 +46,8 @@ end
 GO = {
   "PATH" => "#{ENV['PATH']}:/usr/local/go/bin",
   "GOPATH" => "/usr/local/gopath",
+  "DATABASE_USER" => node['deckbrew']['database']['user'],
+  "DATABASE_PASSWORD" => node['deckbrew']['database']['password'],
 }
 
 directory 'gopath'

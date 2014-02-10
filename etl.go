@@ -3,6 +3,9 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	_ "github.com/lib/pq"
+    "os"
+	"log"
 	"sort"
 	"strings"
 )
@@ -245,12 +248,110 @@ func LoadFormats() ([]MTGFormat, error) {
 	return formats, nil
 }
 
-func FillDatabase(db *sql.DB, path string) error {
+func exec(db *sql.DB, query string, args ...interface{}) {
+	if _, err := db.Exec(query, args...); err != nil {
+		log.Fatal(query, " ", err)
+	}
+}
+
+func CreateDatabase(db *sql.DB) {
+	user := os.Getenv("DATABASE_USER")
+	pass := os.Getenv("DATABASE_PASSWORD")
+
+	if user == "" || pass == "" {
+		log.Fatal("DATABASE_USER and DATABASE_PASSWORD must be set")
+	}
+
+	exec(db, "DROP DATABASE IF EXISTS deckbrew")
+	exec(db, "DROP USER IF EXISTS " + user)
+	exec(db, "CREATE DATABASE deckbrew WITH template=template0 encoding='UTF8'")
+	exec(db, "CREATE USER " + user + " WITH PASSWORD '" + pass + "'")
+	exec(db, "GRANT ALL PRIVILEGES ON DATABASE deckbrew TO " + user)
+}
+
+func CreateTables(db *sql.DB) {
+	user := os.Getenv("DATABASE_USER")
+
+	exec(db, "CREATE EXTENSION pg_trgm")
+
+	exec(db, `CREATE TABLE cards (
+        id                varchar(32)    primary key,
+        name              varchar(200)   DEFAULT '',
+        mana_cost         varchar(45)    DEFAULT '',
+        toughness         varchar(6)     DEFAULT '',
+        power             varchar(6)     DEFAULT '',
+        types             varchar(20)[]  DEFAULT '{}',
+        rarities          varchar(15)[]  DEFAULT '{}',
+        sets              varchar(3)[]   DEFAULT '{}',
+        subtypes          varchar(100)[] DEFAULT '{}',
+        supertypes        varchar(100)[] DEFAULT '{}',
+        colors            varchar(5)[]   DEFAULT '{}',
+        formats           varchar(9)[]   DEFAULT '{}',
+        status            varchar(10)[]  DEFAULT '{}',
+        mids              varchar(20)[]  DEFAULT '{}',
+        record            text           DEFAULT '',
+        rules             text           DEFAULT '',
+        loyalty           integer        DEFAULT 0,
+        cmc               integer        DEFAULT 0)`)
+
+    exec(db, `CREATE TABLE sets (
+        id                varchar(3) primary key,
+        name              varchar(200) DEFAULT '',
+        border            varchar(40) DEFAULT '',
+        type              varchar(32) DEFAULT '')`)
+
+	exec(db, "CREATE INDEX cards_name_id ON cards(id)")
+	exec(db, "CREATE INDEX cards_power_index ON cards(power)")
+	exec(db, "CREATE INDEX cards_toughness_index ON cards(toughness)")
+	exec(db, "CREATE INDEX cards_names_sort_index ON cards(name)")
+	exec(db, "CREATE INDEX cards_types_index ON cards USING GIN(types)")
+	exec(db, "CREATE INDEX cards_subtypes_index ON cards USING GIN(subtypes)")
+	exec(db, "CREATE INDEX cards_supertypes_index ON cards USING GIN(supertypes)")
+	exec(db, "CREATE INDEX cards_colors_index ON cards USING GIN(colors)")
+	exec(db, "CREATE INDEX cards_sets_index ON cards USING GIN(sets)")
+	exec(db, "CREATE INDEX cards_rarities_index ON cards USING GIN(rarities)")
+	exec(db, "CREATE INDEX cards_status_index ON cards USING GIN(status)")
+	exec(db, "CREATE INDEX cards_formats_index ON cards USING GIN(formats)")
+	exec(db, "CREATE INDEX cards_mids_index ON cards USING GIN(mids)")
+	exec(db, "CREATE INDEX cards_names_index ON cards USING GIN(name gin_trgm_ops)")
+	exec(db, "CREATE INDEX cards_rules_index ON cards USING GIN(rules gin_trgm_ops)")
+
+	exec(db, "CREATE INDEX sets_type_index ON sets(type)")
+	exec(db, "CREATE INDEX sets_border_index ON sets(border)")
+
+	exec(db, "GRANT ALL PRIVILEGES ON TABLE cards TO " + user)
+	exec(db, "GRANT ALL PRIVILEGES ON TABLE sets TO " + user)
+}
+
+func SyncDatabase(path string) error {
+	master, err := sql.Open("postgres", "postgres://localhost/?sslmode=disable")
+
+	if err != nil {
+		return err
+	}
+
+	CreateDatabase(master)
+
+	sdb, err := sql.Open("postgres", "postgres://localhost/deckbrew?sslmode=disable")
+
+	if err != nil {
+		return err
+	}
+
+	CreateTables(sdb)
+
 	collection, err := LoadCollection(path)
 
 	if err != nil {
 		return err
 	}
+
+	db, err := GetDatabase()
+
+	if err != nil {
+		return err
+	}
+
 
 	err = CreateCollection(db, collection)
 

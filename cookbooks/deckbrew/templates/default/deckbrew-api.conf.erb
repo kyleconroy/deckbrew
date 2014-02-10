@@ -4,6 +4,8 @@ respawn
 
 start on <%= node['deckbrew']['event'] %>
 env DECKBREW_HOSTNAME=<%= node['deckbrew']['hostname'] %>
+env DATABASE_USER="<%= node['deckbrew']['database']['user'] %>"
+env DATABASE_PASSWORD="<%= node['deckbrew']['database']['password'] %>"
 
 script
         chdir /usr/local/deckbrew
