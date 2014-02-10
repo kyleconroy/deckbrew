@@ -130,9 +130,9 @@ func (s *Search) ParseRarity() error {
 		"common":      true,
 		"uncommon":    true,
 		"rare":        true,
-		"mythic rare": true,
+		"mythic":      true,
 		"special":     true,
-		"basic land":  true,
+		"basic":       true,
 	})
 }
 

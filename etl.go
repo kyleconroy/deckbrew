@@ -45,6 +45,10 @@ func transformRarity(rarity string) string {
                 return "mythic"
         }
 
+        if r == "basic land" {
+                return "basic"
+        }
+
         return r
 }
 
