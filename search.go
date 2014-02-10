@@ -13,8 +13,16 @@ func toUpper(strs []string) []string {
 		uppers = append(uppers, strings.ToUpper(s))
 	}
 	return uppers
-
 }
+
+func toLower(strs []string) []string {
+	downers := []string{}
+	for _, s := range strs {
+		downers = append(downers, strings.ToLower(s))
+	}
+	return downers
+}
+
 
 type Search struct {
 	Conditions []Condition
@@ -86,7 +94,7 @@ func (s *Search) ParseSubtypes() error {
 }
 
 func (s *Search) ParseSets() error {
-	return s.addQuery("sets", toUpper(s.Args["set"]))
+	return s.addQuery("sets", toLower(s.Args["set"]))
 }
 
 func (s *Search) ParseColors() error {
