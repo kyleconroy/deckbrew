@@ -131,6 +131,20 @@ ID](http://gatherer.wizards.com/pages/Help.aspx). By filtering on  endpoint alwa
 an array of cards, as certain prints contain for than one card, such as the
 split card [Turn // Burn](https://api.deckbrew.com/mtg/cards?multiverseid=369080).
 
+#### Search examples
+
+All red or blue rares with "fire" in their name:
+
+> https://api.deckbrew.com/mtg/cards?color=red&color=blue&rarity=rare&name=fire
+
+All black zombies from Onslaught block:
+
+> https://api.deckbrew.com/mtg/cards?set=ons&set=scg&set=lgn&subtype=zombie&color=black
+
+All cards that reference winning or lose the game
+
+> https://api.deckbrew.com/mtg/cards?oracle=win+the+game&oracle=lose+the+game
+
 ### Get a single card
 
 > /mtg/cards/:id
