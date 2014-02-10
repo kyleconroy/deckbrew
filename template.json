@@ -1,4 +1,8 @@
 {
+  "variables": {
+    "deckbrew_database_user": "{{env `DATABASE_USER`}}",
+    "deckbrew_database_password": "{{env `DATABASE_PASSWORD`}}"
+  },
   "builders": [
     {
       "type": "amazon-ebs",
@@ -26,6 +30,14 @@
     {
       "type": "chef-solo",
       "cookbook_paths": ["cookbooks"],
+      "json": {
+        "deckbrew": {
+          "database": {
+            "user": "{{user  `deckbrew_database_user`}}",
+            "password": "{{user  `deckbrew_database_password`}}"
+          }
+        }
+      },
       "run_list": ["deckbrew::database"]
     }
   ]

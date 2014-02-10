@@ -17,7 +17,7 @@ func GetDatabaseURL() (string, error) {
 		return "", fmt.Errorf("DATABASE_USER and DATABASE_PASSWORD need to be set")
 	}
 
-	return fmt.Sprintf("postgres://%s:%s@localhost/deckbrew?sslmode=disable", user, pass), nil
+	return fmt.Sprintf("host=localhost dbname=deckbrew user=%s password=%s sslmode=disable", user, pass), nil
 }
 
 func GetDatabase() (*sql.DB, error) {
@@ -34,6 +34,7 @@ func GetDatabase() (*sql.DB, error) {
 	}
 
 	if db.Ping() != nil {
+		log.Println("Can't connect using regular connection")
 		return db, db.Ping()
 	}
 	return db, nil

@@ -328,18 +328,34 @@ func CreateTables(db *sql.DB) {
 }
 
 func SyncDatabase(path string) error {
-	master, err := sql.Open("postgres", "postgres://localhost/?sslmode=disable")
+	host := os.Getenv("DATABASE_HOST")
+
+	if host == "" {
+		host = "localhost"
+	}
+
+	master, err := sql.Open("postgres", "host="+host+" sslmode=disable")
 
 	if err != nil {
 		return err
 	}
 
+	if master.Ping() != nil {
+		log.Println("Can't create database")
+		return master.Ping()
+	}
+
 	CreateDatabase(master)
 
-	sdb, err := sql.Open("postgres", "postgres://localhost/deckbrew?sslmode=disable")
+	sdb, err := sql.Open("postgres", "host="+host+" dbname=deckbrew sslmode=disable")
 
 	if err != nil {
 		return err
+	}
+
+	if sdb.Ping() != nil {
+		log.Println("Can't create tables")
+		return sdb.Ping()
 	}
 
 	CreateTables(sdb)

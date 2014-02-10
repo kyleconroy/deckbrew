@@ -16,6 +16,7 @@ package 'make'
 package 'git'
 package 'varnish'
 package 'postgresql-9.3'
+package 'postgresql-contrib-9.3'
 package 'unzip'
 
 tar_extract 'https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz' do
@@ -34,7 +35,6 @@ template "varnish" do
   notifies :restart, "service[varnish]"
 end
 
-
 template "deckcache-defaults" do
   path "/etc/default/varnish"
   source "deckbrew-cache.conf.erb"
@@ -42,12 +42,13 @@ template "deckcache-defaults" do
   notifies :restart, "service[varnish]"
 end
 
-
 GO = {
   "PATH" => "#{ENV['PATH']}:/usr/local/go/bin",
   "GOPATH" => "/usr/local/gopath",
   "DATABASE_USER" => node['deckbrew']['database']['user'],
+  "DATABASE_HOST" => node['deckbrew']['database']['host'],
   "DATABASE_PASSWORD" => node['deckbrew']['database']['password'],
+  "DECKBREW_HOSTNAME" => node['deckbrew']['hostname'],
 }
 
 directory 'gopath'

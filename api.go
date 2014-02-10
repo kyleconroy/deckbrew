@@ -19,7 +19,7 @@ func GetHostname() string {
 	hostname := os.Getenv("DECKBREW_HOSTNAME")
 
 	if hostname == "" {
-		return "https://api.deckbrew.com"
+            return "http://localhost:3000"
 	}
 
 	return hostname
