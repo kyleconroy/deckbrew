@@ -123,7 +123,6 @@ func TransformCollection(collection MTGCollection, formats []MTGFormat) ([]Set, 
 				cards[i].Editions = append(cards[i].Editions, edition)
 			}
 		}
-		cards[i].Fill()
 	}
 
 	for _, format := range formats {
@@ -293,7 +292,7 @@ func CreateTables(db *sql.DB) {
 	exec(db, "CREATE EXTENSION pg_trgm")
 
 	exec(db, `CREATE TABLE cards (
-        id                varchar(32)    primary key,
+        id                varchar(49)    primary key,
         name              varchar(200)   DEFAULT '',
         mana_cost         varchar(45)    DEFAULT '',
         toughness         varchar(6)     DEFAULT '',

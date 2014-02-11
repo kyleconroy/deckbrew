@@ -1,10 +1,7 @@
 package main
 
 import (
-	"crypto/md5"
 	"encoding/json"
-	"fmt"
-	"io"
 	"io/ioutil"
 )
 
@@ -47,9 +44,18 @@ type MTGCard struct {
 }
 
 func (c MTGCard) Id() string {
-	h := md5.New()
-	io.WriteString(h, c.Name+c.ManaCost)
-	return fmt.Sprintf("%x", h.Sum(nil))
+	switch c.MultiverseId {
+	case 9844:
+		return "bfm-(big-furry-monster-right)"
+	case 9780:
+		return "bfm-(big-furry-monster-left)"
+	case 74237:
+		return "our-market-research"
+	case 9757:
+		return "the-ultimate-nightmare-of-wizards-of-the-coast-cu"
+	default:
+		return Slug(c.Name)
+	}
 }
 
 type MTGRuling struct {

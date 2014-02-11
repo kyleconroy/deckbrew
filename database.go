@@ -103,6 +103,8 @@ func scanCards(rows *sql.Rows) ([]Card, error) {
 			return cards, err
 		}
 
+		card.Fill()
+
 		cards = append(cards, card)
 	}
 	if err := rows.Err(); err != nil {
@@ -164,6 +166,8 @@ func FetchCard(db *sql.DB, id string) (Card, error) {
 	if err != nil {
 		return card, err
 	}
+
+	card.Fill()
 
 	return card, nil
 }

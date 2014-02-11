@@ -26,6 +26,14 @@ func TestLinkHeader(t *testing.T) {
 
 }
 
+func TestSlug(t *testing.T) {
+	name := "Æther Adept?.\"':,"
+
+	if Slug(name) != "aether-adept" {
+		t.Errorf("%s != aether-adept", Slug(name))
+	}
+}
+
 func TestApi(t *testing.T) {
 	db, err := GetDatabase()
 
@@ -50,7 +58,7 @@ func TestApi(t *testing.T) {
 		"/mtg/cards?rarity=mythic",
 		"/mtg/cards?rarity=basic",
 		"/mtg/cards?oracle=you+win+the+game",
-		"/mtg/cards/1cdf2b87355ed978c0c5fe64bfc6a38c",
+		"/mtg/cards/time-vault",
 		"/mtg/cards/typeahead?q=nessian",
 		"/mtg/sets",
 		"/mtg/sets/UNH",

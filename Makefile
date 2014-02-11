@@ -1,5 +1,11 @@
 .PHONY: deps server test syncdb serverdb ami
 
+ifdef $(DATABASE_HOST)
+ifdef $(DATABASE_USER)
+		ami := packami
+endif
+endif
+
 brewapi: api.go mtgjson.go database.go qc.go etl.go search.go
 	go build -o brewapi
 
@@ -15,15 +21,9 @@ test: cards.json
 syncdb: brewapi cards.json 
 	./brewapi load cards.json
 
-ami: deckbrew
-ifndef DATABASE_PASSWORD
-$(error The DATABASE_PASSWORD environment variable is not set)
-endif
-
-ifndef DATABASE_USER
-$(error The DATABASE_USER environment variable is not set)
-endif
+packami: deckbrew
 	packer build template.json
+
 
 deckbrew: Makefile *.go
 	mkdir -p deckbrew
@@ -37,6 +37,9 @@ cards.json:
 	mv mnt/compendium/DevLab/mtgjson/web/json/AllSets-x.json cards.json
 	rm -f AllSets-x.json.zip
 	rm -rf mnt
+
+ami:
+	@echo "DATABASE_HOST and DATABASE_USER need to be set" && exit 1
 
 clean:
 	rm -f brewapi

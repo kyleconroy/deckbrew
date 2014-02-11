@@ -12,7 +12,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 )
 
 func GetHostname() string {
@@ -25,11 +27,19 @@ func GetHostname() string {
 	return hostname
 }
 
+func Slug(name string) string {
+	re := regexp.MustCompile(`[,.'"?:]`)
+	d := strings.Replace(strings.ToLower(name), " ", "-", -1)
+	a := strings.Replace(d, "æ", "ae", -1)
+	return re.ReplaceAllLiteralString(a, "")
+}
+
 // Import this eventually
 type Card struct {
 	Name          string            `json:"name"`
 	Id            string            `json:"id"`
 	Href          string            `json:"url,omitempty"`
+	StoreUrl      string            `json:"store_url"`
 	Types         []string          `json:"types,omitempty"`
 	Supertypes    []string          `json:"supertypes,omitempty"`
 	Subtypes      []string          `json:"subtypes,omitempty"`
@@ -88,17 +98,31 @@ func (c *Card) Multicolor() bool {
 	return len(c.Colors) > 1
 }
 
+func TCGCardURL(id string) string {
+	return "http://store.tcgplayer.com/magic/product/show?partner=DECKBREW&ProductName=" + id
+}
+
+func TCGEditionURL(set, id string) string {
+	return fmt.Sprintf("http://store.tcgplayer.com/magic/%s/%s?partner=DECKBREW", set, id)
+}
+
 func (c *Card) Fill() {
 	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
 
+	if len(c.Editions) == 1 {
+		c.StoreUrl = TCGEditionURL(c.Editions[0].TCGSet(), c.Id)
+	} else {
+		c.StoreUrl = TCGCardURL(c.Id)
+	}
+
 	for i, _ := range c.Editions {
-		c.Editions[i].Fill()
+		c.Editions[i].Fill(c.Id)
 	}
 }
 
 type Edition struct {
 	Set          string `json:"set"`
-	SetId        string `json:"-"`
+	SetId        string `json:"set_id"`
 	CardId       string `json:"-"`
 	Watermark    string `json:"watermark,omitempty"`
 	Rarity       string `json:"rarity"`
@@ -111,12 +135,31 @@ type Edition struct {
 	Href         string `json:"url,omitempty"`
 	ImageUrl     string `json:"image_url,omitempty"`
 	SetUrl       string `json:"set_url,omitempty"`
+	StoreUrl     string `json:"store_url"`
 }
 
-func (e *Edition) Fill() {
+func (e *Edition) TCGSet() string {
+	switch strings.ToLower(e.SetId) {
+	case "m14":
+		return "magic-2014-(m14)"
+	case "m13":
+		return "magic-2013-(m13)"
+	case "m12":
+		return "magic-2012-(m12)"
+	case "m11":
+		return "magic-2011-(m11)"
+	case "m10":
+		return "magic-2010-(m10)"
+	default:
+		return Slug(e.Set)
+	}
+}
+
+func (e *Edition) Fill(name string) {
 	e.Href = fmt.Sprintf("%s/mtg/cards?multiverseid=%d", GetHostname(), e.MultiverseId)
 	e.SetUrl = fmt.Sprintf("%s/mtg/sets/%s", GetHostname(), e.SetId)
 	e.ImageUrl = fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", e.MultiverseId)
+	e.StoreUrl = TCGEditionURL(e.TCGSet(), name)
 }
 
 type Set struct {
@@ -290,9 +333,6 @@ func NewApi() *martini.Martini {
 	r.Get("/mtg/subtypes", HandleTerm("subtypes"))
 	r.Get("/mtg/types", HandleTerm("types"))
 	r.NotFound(NotFound)
-
-	//They can just download the mtgjson dump
-	//r.Get("/mtg/editions", GetEditions)
 
 	m.Action(r.Handle)
 	return m
