@@ -250,7 +250,11 @@ type Pong struct {
 	Rally string `json:"rally"`
 }
 
-func Ping() (int, []byte) {
+func Ping(db *sql.DB) (int, []byte) {
+	if db.Ping() != nil {
+		return JSON(http.StatusInternalServerError, Errors("The database could not be reached"))
+	}
+
 	return JSON(http.StatusOK, Pong{Rally: "serve"})
 }
 
