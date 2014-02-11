@@ -235,6 +235,17 @@ func HandleTerm(term string) func(*sql.DB) (int, []byte) {
 	}
 }
 
+func HandleTypeahead(db *sql.DB, req *http.Request) (int, []byte) {
+	cards, err := FetchTypeahead(db, req.URL.Query().Get("q"))
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusNotFound, Errors(" Can't find any cards that match that search"))
+	}
+
+	return JSON(http.StatusOK, cards)
+}
+
 type Pong struct {
 	Rally string `json:"rally"`
 }
@@ -266,6 +277,7 @@ func NewApi() *martini.Martini {
 
 	r.Get("/ping", Ping)
 	r.Get("/mtg/cards", HandleCards)
+	r.Get("/mtg/cards/typeahead", HandleTypeahead)
 	r.Get("/mtg/cards/:id", HandleCard)
 	r.Get("/mtg/sets", HandleSets)
 	r.Get("/mtg/sets/:id", HandleSet)

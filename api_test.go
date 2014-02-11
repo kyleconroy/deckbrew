@@ -51,6 +51,7 @@ func TestApi(t *testing.T) {
 		"/mtg/cards?rarity=basic",
 		"/mtg/cards?oracle=you+win+the+game",
 		"/mtg/cards/1cdf2b87355ed978c0c5fe64bfc6a38c",
+		"/mtg/cards/typeahead?q=nessian",
 		"/mtg/sets",
 		"/mtg/sets/UNH",
 		"/mtg/colors",

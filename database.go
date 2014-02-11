@@ -7,6 +7,7 @@ import (
 	_ "github.com/lib/pq"
 	"log"
 	"os"
+	"strings"
 )
 
 func GetDatabaseURL() (string, error) {
@@ -83,26 +84,11 @@ func FetchTerms(db *sql.DB, term string) ([]string, error) {
 	return result, rows.Err()
 }
 
-func FetchCards(db *sql.DB, cond Condition) ([]Card, error) {
+func scanCards(rows *sql.Rows) ([]Card, error) {
 	cards := []Card{}
 
-	query := Select("record").From("cards").Where(cond).Limit(100).OrderBy("name", true)
-
-	ql, items, err := query.ToSql()
-
-	if err != nil {
-		return cards, err
-	}
-
-	log.Println(ql, items)
-
-	rows, err := db.Query(ql, items...)
-
-	if err != nil {
-		return cards, err
-	}
-
 	defer rows.Close()
+
 	for rows.Next() {
 		var blob []byte
 		var card Card
@@ -111,7 +97,7 @@ func FetchCards(db *sql.DB, cond Condition) ([]Card, error) {
 			return cards, err
 		}
 
-		err = json.Unmarshal(blob, &card)
+		err := json.Unmarshal(blob, &card)
 
 		if err != nil {
 			return cards, err
@@ -122,7 +108,42 @@ func FetchCards(db *sql.DB, cond Condition) ([]Card, error) {
 	if err := rows.Err(); err != nil {
 		return cards, err
 	}
+
 	return cards, nil
+}
+
+func FetchTypeahead(db *sql.DB, search string) ([]Card, error) {
+	if strings.ContainsAny(search, "%_") {
+		return []Card{}, fmt.Errorf("Search string can't contain '%%' or '_'")
+	}
+
+	rows, err := db.Query("SELECT record FROM cards WHERE name ILIKE $1 ORDER BY name LIMIT 10", search+"%")
+
+	if err != nil {
+		return []Card{}, err
+	}
+
+	return scanCards(rows)
+}
+
+func FetchCards(db *sql.DB, cond Condition) ([]Card, error) {
+	query := Select("record").From("cards").Where(cond).Limit(100).OrderBy("name", true)
+
+	ql, items, err := query.ToSql()
+
+	if err != nil {
+		return []Card{}, err
+	}
+
+	log.Println(ql, items)
+
+	rows, err := db.Query(ql, items...)
+
+	if err != nil {
+		return []Card{}, err
+	}
+
+	return scanCards(rows)
 }
 
 func FetchCard(db *sql.DB, id string) (Card, error) {
