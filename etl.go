@@ -39,17 +39,17 @@ func ToUniqueLower(things []string) []string {
 }
 
 func transformRarity(rarity string) string {
-        r := strings.ToLower(rarity)
+	r := strings.ToLower(rarity)
 
-        if r == "mythic rare" {
-                return "mythic"
-        }
+	if r == "mythic rare" {
+		return "mythic"
+	}
 
-        if r == "basic land" {
-                return "basic"
-        }
+	if r == "basic land" {
+		return "basic"
+	}
 
-        return r
+	return r
 }
 
 func TransformEdition(s MTGSet, c MTGCard) Edition {
@@ -220,15 +220,15 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 
 		columns := []string{
 			"id", "name", "record", "rules", "mana_cost", "cmc",
-			"power", "toughness", "loyalty", "rarities", "types",
-			"subtypes", "supertypes", "colors", "sets", "formats",
-			"status", "mids",
+			"power", "toughness", "loyalty", "multicolor", "rarities",
+			"types", "subtypes", "supertypes", "colors", "sets",
+			"formats", "status", "mids",
 		}
 
 		q := Insert(columns, "cards")
 
 		_, err = tx.Exec(q, c.Id, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
-			c.Power, c.Toughness, c.Loyalty,
+			c.Power, c.Toughness, c.Loyalty, c.Multicolor(),
 			CreateStringArray(c.Rarities()), CreateStringArray(c.Types),
 			CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes),
 			CreateStringArray(c.Colors), CreateStringArray(c.Sets()),
@@ -307,6 +307,7 @@ func CreateTables(db *sql.DB) {
         formats           varchar(9)[]   DEFAULT '{}',
         status            varchar(10)[]  DEFAULT '{}',
         mids              varchar(20)[]  DEFAULT '{}',
+        multicolor        boolean        DEFAULT false,
         record            text           DEFAULT '',
         rules             text           DEFAULT '',
         loyalty           integer        DEFAULT 0,
@@ -322,6 +323,7 @@ func CreateTables(db *sql.DB) {
 	exec(db, "CREATE INDEX cards_power_index ON cards(power)")
 	exec(db, "CREATE INDEX cards_toughness_index ON cards(toughness)")
 	exec(db, "CREATE INDEX cards_names_sort_index ON cards(name)")
+	exec(db, "CREATE INDEX cards_multicolor_index ON cards(multicolor)")
 	exec(db, "CREATE INDEX cards_types_index ON cards USING GIN(types)")
 	exec(db, "CREATE INDEX cards_subtypes_index ON cards USING GIN(subtypes)")
 	exec(db, "CREATE INDEX cards_supertypes_index ON cards USING GIN(supertypes)")

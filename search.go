@@ -23,7 +23,6 @@ func toLower(strs []string) []string {
 	return downers
 }
 
-
 type Search struct {
 	Conditions []Condition
 	Args       url.Values
@@ -61,7 +60,6 @@ func (s *Search) extractStrings(searchTerm, key string, allowed map[string]bool)
 	return s.addQuery(key, items)
 }
 
-
 func (s *Search) addQuery(key string, items []string) error {
 	if len(items) == 0 {
 		return nil
@@ -73,6 +71,20 @@ func (s *Search) addQuery(key string, items []string) error {
 		s.Conditions = append(s.Conditions, Overlap(key, CreateStringArray(items)))
 	}
 
+	return nil
+}
+
+func (s *Search) ParseMulticolor() error {
+	switch s.Args.Get("multicolor") {
+	case "true":
+		s.Conditions = append(s.Conditions, Eq("multicolor", "true"))
+	case "false":
+		s.Conditions = append(s.Conditions, Eq("multicolor", "false"))
+	case "":
+		return nil
+	default:
+		return fmt.Errorf("Multicolor should be either 'true' or 'false'")
+	}
 	return nil
 }
 
@@ -127,12 +139,12 @@ func (s *Search) ParseFormat() error {
 }
 func (s *Search) ParseRarity() error {
 	return s.extractStrings("rarity", "rarities", map[string]bool{
-		"common":      true,
-		"uncommon":    true,
-		"rare":        true,
-		"mythic":      true,
-		"special":     true,
-		"basic":       true,
+		"common":   true,
+		"uncommon": true,
+		"rare":     true,
+		"mythic":   true,
+		"special":  true,
+		"basic":    true,
 	})
 }
 
@@ -166,7 +178,7 @@ func ParseSearch(u *url.URL) (Condition, error, []string) {
 	search := Search{Args: u.Query(), Conditions: []Condition{}}
 
 	errs := []error{
-		search.ParseMultiverseId(),
+		search.ParseMulticolor(),
 		search.ParseRarity(),
 		search.ParseTypes(),
 		search.ParseSupertypes(),
@@ -174,6 +186,7 @@ func ParseSearch(u *url.URL) (Condition, error, []string) {
 		search.ParseSubtypes(),
 		search.ParseFormat(),
 		search.ParseStatus(),
+		search.ParseMultiverseId(),
 		search.ParseSets(),
 		search.ParseText(),
 		search.ParseName(),

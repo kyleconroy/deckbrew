@@ -19,7 +19,7 @@ func GetHostname() string {
 	hostname := os.Getenv("DECKBREW_HOSTNAME")
 
 	if hostname == "" {
-            return "http://localhost:3000"
+		return "http://localhost:3000"
 	}
 
 	return hostname
@@ -84,6 +84,10 @@ func (c *Card) MultiverseIds() []string {
 	return ToUniqueLower(r)
 }
 
+func (c *Card) Multicolor() bool {
+	return len(c.Colors) > 1
+}
+
 func (c *Card) Fill() {
 	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
 
@@ -116,12 +120,12 @@ func (e *Edition) Fill() {
 }
 
 type Set struct {
-	Id     string `json:"id"`
-	Name   string `json:"name"`
-	Border string `json:"border"`
-	Type   string `json:"type"`
-	Href   string `json:"url"`
-	CardsUrl   string `json:"cards_url"`
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	Border   string `json:"border"`
+	Type     string `json:"type"`
+	Href     string `json:"url"`
+	CardsUrl string `json:"cards_url"`
 }
 
 func (s *Set) Fill() {
