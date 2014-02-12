@@ -13,6 +13,7 @@ apt_repository 'varnish' do
 end
 
 package 'make'
+package 'mercurial'
 package 'git'
 package 'varnish'
 package 'postgresql-9.3'

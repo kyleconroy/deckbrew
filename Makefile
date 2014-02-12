@@ -1,9 +1,10 @@
 .PHONY: deps server test syncdb serverdb ami
 
-ifdef $(DATABASE_HOST)
-ifdef $(DATABASE_USER)
-		ami := packami
+ifndef $(DATABASE_PASSWORD)
+		ami := noami
 endif
+ifndef $(DATABASE_USER)
+		ami := noami
 endif
 
 brewapi: api.go mtgjson.go database.go qc.go etl.go search.go tcgplayer.go soup.go
@@ -24,7 +25,7 @@ syncdb: brewapi cards.json
 prices.json:
 	./brewapi price prices.json
 
-packami: deckbrew
+ami: deckbrew
 	packer build template.json
 
 
@@ -41,8 +42,8 @@ cards.json:
 	rm -f AllSets-x.json.zip
 	rm -rf mnt
 
-ami:
-	@echo "DATABASE_HOST and DATABASE_USER need to be set" && exit 1
+noami:
+	@echo "DATABASE_PASSWORD and DATABASE_USER need to be set" && exit 1
 
 clean:
 	rm -f brewapi
