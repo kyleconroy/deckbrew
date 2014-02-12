@@ -14,13 +14,27 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func ReplaceUnicode(name string) string {
-	a := strings.Replace(name, "Æ", "AE", -1)
-	e := strings.Replace(a, "é", "e", -1)
-	o := strings.Replace(e, "ö", "o", -1)
-	return strings.Replace(o, "û", "u", -1)
+    replace := map[string]string {
+	"Æ": "AE",
+	"é": "e",
+	"ö": "o",
+    "û": "u",
+    "á": "a",
+    "â": "a",
+    "ú": "u",
+    "à": "a",
+    }
+    s := name
+
+    for unicode, ascii := range replace {
+            s = strings.Replace(s, unicode, ascii, -1)
+    }
+
+    return s
 }
 
 func TCGSlug(name string) string {
@@ -39,7 +53,7 @@ func TCGCardURL(c *Card) string {
 
 func TCGEditionURL(c *Card, e *Edition) string {
 	set := TCGSlug(TCGSet(e.SetId, e.Set))
-	id := TCGSlug(TCGName(e.MultiverseId, c.Name))
+	id := TCGSlug(TCGName(c.Name))
 	return fmt.Sprintf("http://store.tcgplayer.com/magic/%s/%s?partner=DECKBREW", set, id)
 }
 
@@ -62,7 +76,8 @@ type PriceList struct {
 	Prices map[int]Price
 }
 
-func TCGName(id int, name string) string {
+func TCGName(name string) string {
+id := 0
 	switch id {
 	case 9844:
 		return "B.F.M. (Big Furry Monster Right)"
@@ -73,7 +88,7 @@ func TCGName(id int, name string) string {
 	case 9757:
 		return "The Ultimate Nightmare of Wizards of the Coast Cu"
 	default:
-		return ReplaceUnicode(name)
+        return strings.ToLower(ReplaceUnicode(name))
 	}
 }
 
@@ -87,7 +102,7 @@ func TCGSet(setId, set string) string {
 		"M13": "Magic 2013 (M13)",
 		"M12": "Magic 2012 (M12)",
 		"M11": "Magic 2011 (M11)",
-		"M10": "Magic 2010 (M10)",
+		"M10": "Magic 2010",
 		"RAV": "Ravnica",
 		"DDG": "Duel Decks: Knights vs Dragons",
 		"DDL": "Duel Decks: Heroes vs. Monsters",
@@ -139,7 +154,7 @@ func GetPrice(c Card, e Edition) (Price, error) {
 		return Price{}, fmt.Errorf("TCGPlayer doesn't support bottom side lookup")
 	}
 
-	name := TCGName(e.MultiverseId, c.Name)
+	name := TCGName(c.Name)
 	v := url.Values{}
 	v.Set("pk", "DECKBREW")
 	v.Set("s", TCGSet(e.SetId, e.Set))
@@ -215,7 +230,19 @@ func LoadPriceList(path string) (PriceList, error) {
 }
 
 func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
-	log.Println("Starting", setId, setName)
+	skip := map[string]bool{
+		"MED": true,
+		"ME2": true,
+		"ME3": true,
+		"ME4": true,
+		"PPR": true,
+        "VAN": true,
+	}
+
+	if skip[setId] {
+		return map[string]Price{}, fmt.Errorf("TCGPlayer doesn't support %s", setName)
+	}
+
 	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(setName)
 	resp, err := http.Get(u)
 
@@ -245,25 +272,28 @@ func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 		return map[string]Price{}, fmt.Errorf("No cards in set")
 	}
 	for _, c := range cards {
-        
-        // Skip basic lands
+
+		// Skip basic lands
 		if len(c.Supertypes) == 1 && c.Supertypes[0] == "basic" {
-				continue
+			continue
 		}
 
-        e := c.Editions[0]
+		e := c.Editions[0]
 
-// TCGPlayer doesn't support back side
-	if strings.HasSuffix(e.Number, "b") && e.Layout == "double-faced" {
+	if e.Layout == "plane" && e.SetId == "PC2" {
             continue
 	}
+		// TCGPlayer doesn't support back side
+		if strings.HasSuffix(e.Number, "b") && e.Layout == "double-faced" {
+			continue
+		}
 
-// TCGPlayer doesn't support bottom side lookup")
-	if strings.HasSuffix(e.Number, "b") && e.Layout == "flip" {
-            continue
-	}
+		// TCGPlayer doesn't support bottom side lookup")
+		if strings.HasSuffix(e.Number, "b") && e.Layout == "flip" {
+			continue
+		}
 
-		if _, ok := prices[strings.ToLower(ReplaceUnicode(c.Name))]; !ok {
+		if _, ok := prices[TCGName(c.Name)]; !ok {
 			log.Println("NOT FOUND", setName, c.Name)
 		}
 	}
@@ -302,7 +332,7 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 			return results, fmt.Errorf("A proper pricing table has 8 cells")
 		}
 
-		name := strings.ToLower(strings.TrimSpace(Flatten(tds[0])))
+		name := strings.ToLower(ReplaceUnicode(strings.TrimSpace(Flatten(tds[0]))))
 		h := parseMoney(Flatten(tds[5]))
 		a := parseMoney(Flatten(tds[6]))
 		l := parseMoney(Flatten(tds[7]))
@@ -323,21 +353,40 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 func DumpPricing(db *sql.DB, output string) error {
 	_ = PriceList{Prices: map[int]Price{}}
 
-	scrape := func(set, name string) {
-		_, e := ScrapePrices(db, set, name)
-		if e != nil {
-			log.Fatal(e)
-		}
+	sets, err := FetchSets(db)
+
+	//	"ISD": "Innistrad",
+    //    "NPH": "New Phyrexia",
+    //    "MBS": "Mirrodin Besieged",
+    //    "SOM": "Scars of Mirrodin",
+    //    "ROE": "Rise of the Eldrazi",
+	//	"DKA": "Dark Ascension",
+	//	"AVR": "Avacyn Restored",
+	//	"BNG": "Born of the Gods",
+	//	"THS": "Theros",
+	//	"DGM": "Dragon's Maze",
+	//	"GTC": "Gatecrash",
+	//	"RTR": "Return to Ravnica",
+	//}
+
+    if err != nil {
+            return err
+        }
+
+	var wg sync.WaitGroup
+
+	for _, set := range sets {
+		wg.Add(1)
+		go func(set, name string) {
+			_, e := ScrapePrices(db, set, name)
+			if e != nil {
+				log.Println(e)
+			}
+			wg.Done()
+		}(set.Id, TCGSet(set.Id, set.Name))
 	}
 
-	scrape("ISD", "Innistrad")
-	scrape("DKA", "Dark Ascension")
-	scrape("AVR", "Avacyn Restored")
-	scrape("BNG", "Born of the Gods")
-	scrape("THS", "Theros")
-	scrape("DGM", "Dragon's Maze")
-	scrape("GTC", "Gatecrash")
-	scrape("RTR", "Return to Ravnica")
+	wg.Wait()
 
 	return nil
 }
