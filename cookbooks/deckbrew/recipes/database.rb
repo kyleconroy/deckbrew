@@ -54,7 +54,7 @@ GO = {
 
 directory 'gopath'
 
-execute 'make clean deps brewapi' do
+execute 'make clean deps brewapi prices.json' do
   cwd '/usr/local/deckbrew'
   environment (GO)
 end
