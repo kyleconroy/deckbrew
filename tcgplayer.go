@@ -315,7 +315,7 @@ func FetchPrices(db *sql.DB, sets []Set) map[string]Price {
 
 func UpdatePrices(db *sql.DB, pl *PriceList) {
 	for {
-		time.Sleep(1 * time.Hour)
+		time.Sleep(50 * time.Minute)
 
         log.Println("Fetching new prices")
 
