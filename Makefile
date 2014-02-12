@@ -6,7 +6,7 @@ ifdef $(DATABASE_USER)
 endif
 endif
 
-brewapi: api.go mtgjson.go database.go qc.go etl.go search.go price.go
+brewapi: api.go mtgjson.go database.go qc.go etl.go search.go tcgplayer.go soup.go
 	go build -o brewapi
 
 deps:

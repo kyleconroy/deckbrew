@@ -350,17 +350,25 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Println("Loaded all data into the database")
+		log.Println("Dumped all data from the database to a file")
 		return
 	}
 
 	db, err := GetDatabase()
 
-	//NewMain(db)
-	//return
-
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if flag.Arg(0) == "price" {
+		err := DumpPricing(db, flag.Arg(1))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println("Pulled all pricing data into a file")
+		return
 	}
 
 	m := NewApi()
