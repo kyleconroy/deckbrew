@@ -54,7 +54,7 @@ GO = {
 
 directory 'gopath'
 
-execute 'make clean deps brewapi prices.json' do
+execute 'make clean deps brewapi' do
   cwd '/usr/local/deckbrew'
   environment (GO)
 end
@@ -65,6 +65,12 @@ execute 'make syncdb' do
   user 'postgres'
   environment (GO)
 end
+
+execute 'make prices.json' do
+  cwd '/usr/local/deckbrew'
+  environment (GO)
+end
+
 
 # Upstart
 template "deckapi" do
