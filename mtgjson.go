@@ -43,21 +43,6 @@ type MTGCard struct {
 	Watermark     string      `json:"watermark"`
 }
 
-func (c MTGCard) Id() string {
-	switch c.MultiverseId {
-	case 9844:
-		return "bfm-(big-furry-monster-right)"
-	case 9780:
-		return "bfm-(big-furry-monster-left)"
-	case 74237:
-		return "our-market-research"
-	case 9757:
-		return "the-ultimate-nightmare-of-wizards-of-the-coast-cu"
-	default:
-		return Slug(c.Name)
-	}
-}
-
 type MTGRuling struct {
 	Date string `json:"date"`
 	Text string `json:"text"`

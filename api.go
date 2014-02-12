@@ -27,11 +27,26 @@ func GetHostname() string {
 	return hostname
 }
 
+func ReverseCard(id string) string {
+	return fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), id)
+}
+
+func ReverseEdition(id int) string {
+	return fmt.Sprintf("%s/mtg/cards?multiverseid=%d", GetHostname(), id)
+}
+
+func ReverseSet(id string) string {
+	return fmt.Sprintf("%s/mtg/sets/%s", GetHostname(), id)
+}
+
+func MTGImageURL(id int) string {
+	return fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", id)
+}
+
 func Slug(name string) string {
-	re := regexp.MustCompile(`[,.'"?:]`)
+	re := regexp.MustCompile(`[,.'"?:()]`)
 	d := strings.Replace(strings.ToLower(name), " ", "-", -1)
-	a := strings.Replace(d, "æ", "ae", -1)
-	return re.ReplaceAllLiteralString(a, "")
+	return re.ReplaceAllLiteralString(d, "")
 }
 
 // Import this eventually
@@ -44,13 +59,13 @@ type Card struct {
 	Supertypes    []string          `json:"supertypes,omitempty"`
 	Subtypes      []string          `json:"subtypes,omitempty"`
 	Colors        []string          `json:"colors,omitempty"`
-	FormatMap     map[string]string `json:"formats"`
 	ConvertedCost int               `json:"cmc"`
 	ManaCost      string            `json:"cost"`
 	Text          string            `json:"text"`
 	Power         string            `json:"power,omitempty"`
 	Toughness     string            `json:"toughness,omitempty"`
 	Loyalty       int               `json:"loyalty,omitempty"`
+	FormatMap     map[string]string `json:"formats"`
 	Editions      []Edition         `json:"editions,omitempty"`
 }
 
@@ -98,25 +113,16 @@ func (c *Card) Multicolor() bool {
 	return len(c.Colors) > 1
 }
 
-func TCGCardURL(id string) string {
-	return "http://store.tcgplayer.com/magic/product/show?partner=DECKBREW&ProductName=" + id
-}
-
-func TCGEditionURL(set, id string) string {
-	return fmt.Sprintf("http://store.tcgplayer.com/magic/%s/%s?partner=DECKBREW", set, id)
-}
-
 func (c *Card) Fill() {
-	c.Href = fmt.Sprintf("%s/mtg/cards/%s", GetHostname(), c.Id)
-
-	if len(c.Editions) == 1 {
-		c.StoreUrl = TCGEditionURL(c.Editions[0].TCGSet(), c.Id)
-	} else {
-		c.StoreUrl = TCGCardURL(c.Id)
-	}
+	c.Href = ReverseCard(c.Id)
+	c.StoreUrl = TCGCardURL(c)
 
 	for i, _ := range c.Editions {
-		c.Editions[i].Fill(c.Id)
+		e := &c.Editions[i]
+		e.Href = ReverseEdition(e.MultiverseId)
+		e.SetUrl = ReverseSet(e.SetId)
+		e.ImageUrl = MTGImageURL(e.MultiverseId)
+		e.StoreUrl = TCGEditionURL(c, e)
 	}
 }
 
@@ -132,34 +138,19 @@ type Edition struct {
 	Flavor       string `json:"flavor,omitempty"`
 	Number       string `json:"number"`
 	Layout       string `json:"layout"`
+	Price        Price  `json:"price,omitempty"`
 	Href         string `json:"url,omitempty"`
 	ImageUrl     string `json:"image_url,omitempty"`
 	SetUrl       string `json:"set_url,omitempty"`
 	StoreUrl     string `json:"store_url"`
 }
 
-func (e *Edition) TCGSet() string {
-	switch strings.ToLower(e.SetId) {
-	case "m14":
-		return "magic-2014-(m14)"
-	case "m13":
-		return "magic-2013-(m13)"
-	case "m12":
-		return "magic-2012-(m12)"
-	case "m11":
-		return "magic-2011-(m11)"
-	case "m10":
-		return "magic-2010-(m10)"
-	default:
-		return Slug(e.Set)
-	}
-}
-
-func (e *Edition) Fill(name string) {
-	e.Href = fmt.Sprintf("%s/mtg/cards?multiverseid=%d", GetHostname(), e.MultiverseId)
-	e.SetUrl = fmt.Sprintf("%s/mtg/sets/%s", GetHostname(), e.SetId)
-	e.ImageUrl = fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", e.MultiverseId)
-	e.StoreUrl = TCGEditionURL(e.TCGSet(), name)
+type Price struct {
+	Low     int    `json:"low"`
+	Average int    `json:"average"`
+	Foil    int    `json:"average_foil"`
+	High    int    `json:"high"`
+	Note    string `json:"note"`
 }
 
 type Set struct {
@@ -352,7 +343,21 @@ func main() {
 		return
 	}
 
+	if flag.Arg(0) == "dump" {
+		err := DumpDatabase(flag.Arg(1), flag.Arg(2))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println("Loaded all data into the database")
+		return
+	}
+
 	db, err := GetDatabase()
+
+	//NewMain(db)
+	//return
 
 	if err != nil {
 		log.Fatal(err)

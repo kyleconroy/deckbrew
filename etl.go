@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	_ "github.com/lib/pq"
+	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -64,7 +65,7 @@ func TransformEdition(s MTGSet, c MTGCard) Edition {
 		Border:       c.Border,
 		Layout:       c.Layout,
 		Number:       c.Number,
-		CardId:       c.Id(),
+		CardId:       Slug(c.Name),
 	}
 }
 
@@ -81,7 +82,7 @@ func TransformSet(s MTGSet) Set {
 func TransformCard(c MTGCard) Card {
 	return Card{
 		Name:          c.Name,
-		Id:            c.Id(),
+		Id:            Slug(c.Name),
 		Text:          c.Text,
 		Colors:        ToSortedLower(c.Colors),
 		Types:         ToSortedLower(c.Types),
@@ -292,7 +293,7 @@ func CreateTables(db *sql.DB) {
 	exec(db, "CREATE EXTENSION pg_trgm")
 
 	exec(db, `CREATE TABLE cards (
-        id                varchar(49)    primary key,
+        id                varchar(150)   primary key,
         name              varchar(200)   DEFAULT '',
         mana_cost         varchar(45)    DEFAULT '',
         toughness         varchar(6)     DEFAULT '',
@@ -394,4 +395,32 @@ func SyncDatabase(path string) error {
 	}
 
 	return nil
+}
+
+func DumpDatabase(inpath string, outpath string) error {
+	collection, err := LoadCollection(inpath)
+
+	if err != nil {
+		return err
+	}
+
+	formats, err := LoadFormats()
+
+	if err != nil {
+		return err
+	}
+
+	_, cards := TransformCollection(collection, formats)
+
+	if err != nil {
+		return err
+	}
+
+	blob, err := json.Marshal(cards)
+
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(outpath, blob, 0644)
 }
