@@ -20,6 +20,6 @@ sub vcl_recv {
 }
 
 sub vcl_fetch {
-    set beresp.ttl = 100d;
+    set beresp.ttl = 2h;
     return(deliver);
 }

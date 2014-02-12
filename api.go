@@ -113,7 +113,7 @@ func (c *Card) Multicolor() bool {
 	return len(c.Colors) > 1
 }
 
-func (c *Card) Fill() {
+func (c *Card) Fill(pl *PriceList) {
 	c.Href = ReverseCard(c.Id)
 	c.StoreUrl = TCGCardURL(c)
 
@@ -123,6 +123,7 @@ func (c *Card) Fill() {
 		e.SetUrl = ReverseSet(e.SetId)
 		e.ImageUrl = MTGImageURL(e.MultiverseId)
 		e.StoreUrl = TCGEditionURL(c, e)
+		e.Price = pl.GetPrice(e.MultiverseId)
 	}
 }
 
@@ -138,7 +139,7 @@ type Edition struct {
 	Flavor       string `json:"flavor,omitempty"`
 	Number       string `json:"number"`
 	Layout       string `json:"layout"`
-	Price        Price  `json:"price,omitempty"`
+	Price        *Price `json:"price,omitempty"`
 	Href         string `json:"url,omitempty"`
 	ImageUrl     string `json:"image_url,omitempty"`
 	SetUrl       string `json:"set_url,omitempty"`
@@ -148,7 +149,6 @@ type Edition struct {
 type Price struct {
 	Low     int    `json:"low"`
 	Average int    `json:"average"`
-	Foil    int    `json:"average_foil"`
 	High    int    `json:"high"`
 	Note    string `json:"note"`
 }
@@ -203,7 +203,7 @@ type ApiError struct {
 	Errors []string `json:"errors"`
 }
 
-func HandleCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []byte) {
+func HandleCards(db *sql.DB, pl *PriceList, req *http.Request, w http.ResponseWriter) (int, []byte) {
 	cond, err, errors := ParseSearch(req.URL)
 
 	if err != nil {
@@ -218,18 +218,24 @@ func HandleCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []b
 		return JSON(http.StatusNotFound, Errors("Cards not found"))
 	}
 
+	for i, _ := range cards {
+		cards[i].Fill(pl)
+	}
+
 	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, 0))
 
 	return JSON(http.StatusOK, cards)
 }
 
-func HandleCard(db *sql.DB, params martini.Params) (int, []byte) {
+func HandleCard(db *sql.DB, pl *PriceList, params martini.Params) (int, []byte) {
 	card, err := FetchCard(db, params["id"])
 
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors("Card not found"))
 	}
+
+	card.Fill(pl)
 
 	return JSON(http.StatusOK, card)
 }
@@ -269,12 +275,16 @@ func HandleTerm(term string) func(*sql.DB) (int, []byte) {
 	}
 }
 
-func HandleTypeahead(db *sql.DB, req *http.Request) (int, []byte) {
+func HandleTypeahead(db *sql.DB, pl *PriceList, req *http.Request) (int, []byte) {
 	cards, err := FetchTypeahead(db, req.URL.Query().Get("q"))
 
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors(" Can't find any cards that match that search"))
+	}
+
+	for i, _ := range cards {
+		cards[i].Fill(pl)
 	}
 
 	return JSON(http.StatusOK, cards)
@@ -365,13 +375,23 @@ func main() {
 
 		if err != nil {
 			log.Fatal(err)
+		        return
 		}
 
 		log.Println("Pulled all pricing data into a file")
 		return
 	}
 
+	prices, err := LoadPriceList("prices.json")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go UpdatePrices(db, &prices)
+
 	m := NewApi()
 	m.Map(db)
+	m.Map(&prices)
 	m.Run()
 }

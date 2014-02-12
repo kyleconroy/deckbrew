@@ -12,14 +12,17 @@ brewapi: api.go mtgjson.go database.go qc.go etl.go search.go tcgplayer.go soup.
 deps:
 	go get -d -v ./...
 
-serve: brewapi
-	./brewapi
+serve: brewapi prices.json
+	./brewapi 
 
 test: cards.json 
 	go test -v
 
 syncdb: brewapi cards.json 
 	./brewapi load cards.json
+
+prices.json:
+	./brewapi price prices.json
 
 packami: deckbrew
 	packer build template.json

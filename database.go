@@ -41,7 +41,6 @@ func FetchSet(db *sql.DB, id string) (Set, error) {
 	var set Set
 	row := db.QueryRow("SELECT id,name,border,type FROM sets WHERE id = $1", id)
 	err := row.Scan(&set.Id, &set.Name, &set.Border, &set.Type)
-	set.Fill()
 	return set, err
 }
 
@@ -102,8 +101,6 @@ func scanCards(rows *sql.Rows) ([]Card, error) {
 		if err != nil {
 			return cards, err
 		}
-
-		card.Fill()
 
 		cards = append(cards, card)
 	}
@@ -166,8 +163,6 @@ func FetchCard(db *sql.DB, id string) (Card, error) {
 	if err != nil {
 		return card, err
 	}
-
-	card.Fill()
 
 	return card, nil
 }
