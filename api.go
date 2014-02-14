@@ -150,7 +150,7 @@ type Edition struct {
 
 type Price struct {
 	Low     int    `json:"low"`
-	Average int    `json:"average"`
+	Average int    `json:"median"`
 	High    int    `json:"high"`
 	Note    string `json:"note"`
 }
