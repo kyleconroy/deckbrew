@@ -79,8 +79,10 @@ func (c *Card) Sets() []string {
 
 func (c *Card) Formats() []string {
 	v := []string{}
-	for format, _ := range c.FormatMap {
-		v = append(v, format)
+	for format, status := range c.FormatMap {
+		if status == "legal" || status == "restricted" {
+			v = append(v, format)
+		}
 	}
 	return ToUniqueLower(v)
 }
