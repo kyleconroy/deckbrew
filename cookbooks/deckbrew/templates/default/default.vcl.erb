@@ -14,6 +14,9 @@ sub vcl_recv {
     if (req.url ~ "^/ping") {
         return(pass);
     }
+    if (req.url ~ "^/mtg/cards/random") {
+        return(pass);
+    }
     unset req.http.Cache-Control;
     unset req.http.Cookie;
     return(lookup);

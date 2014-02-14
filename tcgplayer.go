@@ -259,7 +259,7 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 		return results, fmt.Errorf("Couldn't find the third pricing table")
 	}
 
-    n := `store.tcgplayer.com allows you to buy cards from any of our vendors, all at the same time, in a simple checkout experience. Shop, Compare & Save with TCGplayer.com!`
+	n := `store.tcgplayer.com allows you to buy cards from any of our vendors, all at the same time, in a simple checkout experience. Shop, Compare & Save with TCGplayer.com!`
 
 	for _, row := range FindAll(tables[2], "tr") {
 		tds := FindAll(row, "td")
@@ -276,10 +276,10 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 		// Handle split cards
 		if strings.Contains(name, "//") {
 			names := strings.Split(name, "//")
-            results[strings.TrimSpace(names[0])] = Price{High: h, Average: a, Low: l, Note: n}
-            results[strings.TrimSpace(names[1])] = Price{High: h, Average: a, Low: l, Note: n}
+			results[strings.TrimSpace(names[0])] = Price{High: h, Average: a, Low: l, Note: n}
+			results[strings.TrimSpace(names[1])] = Price{High: h, Average: a, Low: l, Note: n}
 		} else {
-            results[name] = Price{High: h, Average: a, Low: l, Note: n}
+			results[name] = Price{High: h, Average: a, Low: l, Note: n}
 		}
 	}
 
@@ -317,7 +317,7 @@ func UpdatePrices(db *sql.DB, pl *PriceList) {
 	for {
 		time.Sleep(50 * time.Minute)
 
-        log.Println("Fetching new prices")
+		log.Println("Fetching new prices")
 
 		sets, err := FetchSets(db)
 
@@ -326,7 +326,7 @@ func UpdatePrices(db *sql.DB, pl *PriceList) {
 			continue
 		}
 
-        pl.Prices = FetchPrices(db, sets)
+		pl.Prices = FetchPrices(db, sets)
 	}
 }
 

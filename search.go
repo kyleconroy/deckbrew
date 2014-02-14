@@ -209,7 +209,7 @@ func CardsPaging(u *url.URL) (int, error) {
 	pagenum := u.Query().Get("page")
 
 	if pagenum == "" {
-		pagenum = "0"
+		return 0, nil
 	}
 
 	page, err := strconv.Atoi(pagenum)

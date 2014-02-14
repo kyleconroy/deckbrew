@@ -1,6 +1,9 @@
 package main
 
 import (
+        "fmt"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -29,13 +32,14 @@ func TestLinkHeader(t *testing.T) {
 func TestSlug(t *testing.T) {
 	name := "Æther Adept?.\"':,"
 
-	if Slug(name) != "aether-adept" {
-		t.Errorf("%s != aether-adept", Slug(name))
+	if Slug(name) != "æther-adept" {
+		t.Errorf("%s != æther-adept", Slug(name))
 	}
 }
 
 func TestApi(t *testing.T) {
 	db, err := GetDatabase()
+	pricelist := PriceList{}
 
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +47,7 @@ func TestApi(t *testing.T) {
 
 	m := NewApi()
 	m.Map(db)
+	m.Map(&pricelist)
 
 	ts := httptest.NewServer(m)
 	defer ts.Close()
@@ -79,5 +84,56 @@ func TestApi(t *testing.T) {
 		if res.StatusCode != 200 {
 			t.Errorf("Expected %s to return 200, not %d", url, res.StatusCode)
 		}
+	}
+
+	// Test Random
+	res, err := http.Get(ts.URL + "/mtg/cards/random")
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if res.Request.URL.String() == "/mtg/cards/random" {
+		t.Errorf("Expected /mtg/cards/random redirect to a new page")
+	}
+
+	loadFirstCard := func(u string) (Card, error) {
+		var card Card
+
+		res, err := http.Get(ts.URL + u)
+
+		if err != nil {
+			return card, err
+		}
+
+		if res.StatusCode != 200 {
+			return card, fmt.Errorf("Expected %s to return 200, not %d", u, res.StatusCode)
+		}
+
+		defer res.Body.Close()
+
+		blob, err := ioutil.ReadAll(res.Body)
+
+		if err != nil {
+			return card, err
+		}
+
+		var cards []Card
+
+		err = json.Unmarshal(blob, &cards)
+
+		if err != nil {
+			return card, err
+		}
+
+		return cards[0], nil
+	}
+
+	// Test Paging
+	pageone, _ := loadFirstCard("/mtg/cards?page=1")
+	pagetwo, _ := loadFirstCard("/mtg/cards?page=2")
+
+	if pageone.Id == pagetwo.Id {
+		t.Errorf("Page one and two both have the same first card, %s", pageone.Id)
 	}
 }

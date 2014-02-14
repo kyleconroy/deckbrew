@@ -125,10 +125,11 @@ func FetchTypeahead(db *sql.DB, search string) ([]Card, error) {
 	return scanCards(rows)
 }
 
-func FetchCards(db *sql.DB, cond Condition) ([]Card, error) {
-	query := Select("record").From("cards").Where(cond).Limit(100).OrderBy("name", true)
+func FetchCards(db *sql.DB, cond Condition, page int) ([]Card, error) {
+	query := Select("record").From("cards").Where(cond).OrderBy("name", true)
+    limit := query.Limit(100).Offset(page * 100)
 
-	ql, items, err := query.ToSql()
+	ql, items, err := limit.ToSql()
 
 	if err != nil {
 		return []Card{}, err

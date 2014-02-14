@@ -211,7 +211,14 @@ func HandleCards(db *sql.DB, pl *PriceList, req *http.Request, w http.ResponseWr
 		return JSON(http.StatusBadRequest, Errors(errors...))
 	}
 
-	cards, err := FetchCards(db, cond)
+	page, err := CardsPaging(req.URL)
+
+	if err != nil {
+		log.Println(err)
+		return JSON(http.StatusBadRequest, Errors(errors...))
+	}
+
+	cards, err := FetchCards(db, cond, page)
 
 	if err != nil {
 		log.Println(err)
@@ -225,6 +232,21 @@ func HandleCards(db *sql.DB, pl *PriceList, req *http.Request, w http.ResponseWr
 	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, 0))
 
 	return JSON(http.StatusOK, cards)
+}
+
+func HandleRandomCard(db *sql.DB, w http.ResponseWriter, r *http.Request) (int, []byte) {
+	var card string
+	err := db.QueryRow("SELECT id FROM cards ORDER BY RANDOM() LIMIT 1").Scan(&card)
+	switch {
+	case err == sql.ErrNoRows:
+		return JSON(http.StatusNotFound, Errors("No random card can be found"))
+	case err != nil:
+		log.Println(err)
+		return JSON(http.StatusInternalServerError, Errors("Can't connect to database"))
+	default:
+		http.Redirect(w, r, "/mtg/cards/"+card, http.StatusFound)
+		return JSON(http.StatusFound, []string{"Redirecting to /mtg/cards/" + card})
+	}
 }
 
 func HandleCard(db *sql.DB, pl *PriceList, params martini.Params) (int, []byte) {
@@ -313,9 +335,11 @@ func NewApi() *martini.Martini {
 	m.Use(martini.Recovery())
 	m.Use(martini.Logger())
 	m.Use(gzip.All())
-	m.Use(func(c martini.Context, w http.ResponseWriter) {
+	m.Use(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/mtg/cards/random" {
+			w.Header().Set("Cache-Control", "public,max-age=3600")
+		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Cache-Control", "public,max-age=3600")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("License", "The textual information presented through this API about Magic: The Gathering is copyrighted by Wizards of the Coast.")
 		w.Header().Set("Disclaimer", "This API is not produced, endorsed, supported, or affiliated with Wizards of the Coast.")
@@ -326,6 +350,7 @@ func NewApi() *martini.Martini {
 	r.Get("/ping", Ping)
 	r.Get("/mtg/cards", HandleCards)
 	r.Get("/mtg/cards/typeahead", HandleTypeahead)
+	r.Get("/mtg/cards/random", HandleRandomCard)
 	r.Get("/mtg/cards/:id", HandleCard)
 	r.Get("/mtg/sets", HandleSets)
 	r.Get("/mtg/sets/:id", HandleSet)
@@ -375,7 +400,7 @@ func main() {
 
 		if err != nil {
 			log.Fatal(err)
-		        return
+			return
 		}
 
 		log.Println("Pulled all pricing data into a file")
