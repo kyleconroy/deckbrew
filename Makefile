@@ -26,8 +26,10 @@ prices.json:
 	./brewapi price prices.json
 
 ami: deckbrew
-	packer build template.json
+	packer build templates/api.json
 
+imageami:
+	packer build templates/image.json
 
 deckbrew: Makefile *.go
 	mkdir -p deckbrew

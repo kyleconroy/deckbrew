@@ -1,0 +1,9 @@
+server {
+  listen 80 default_server;
+  server_name _;
+ 
+  location / {
+    proxy_pass        http://mtgimage.com;
+    proxy_set_header  X-Real-IP  $remote_addr;
+  }
+}
