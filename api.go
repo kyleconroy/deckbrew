@@ -40,7 +40,7 @@ func ReverseSet(id string) string {
 }
 
 func MTGImageURL(id int) string {
-	return fmt.Sprintf("http://mtgimage.com/multiverseid/%d.jpg", id)
+	return fmt.Sprintf("https://image.deckbrew.com/mtg/multiverseid/%d.jpg", id)
 }
 
 func Slug(name string) string {

@@ -2,9 +2,11 @@
 
 ifndef $(DATABASE_PASSWORD)
 		ami := noami
+		imageami := noami
 endif
 ifndef $(DATABASE_USER)
 		ami := noami
+		imageami := noami
 endif
 
 brewapi: api.go mtgjson.go database.go qc.go etl.go search.go tcgplayer.go soup.go
