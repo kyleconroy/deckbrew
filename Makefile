@@ -42,9 +42,8 @@ deckbrew: Makefile *.go
 cards.json:
 	wget http://mtgjson.com/json/AllSets-x.json.zip
 	unzip AllSets-x.json.zip
-	mv mnt/compendium/DevLab/mtgjson/web/json/AllSets-x.json cards.json
+	mv AllSets-x.json cards.json
 	rm -f AllSets-x.json.zip
-	rm -rf mnt
 
 noami:
 	@echo "DATABASE_PASSWORD and DATABASE_USER need to be set" && exit 1
