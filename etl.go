@@ -351,9 +351,9 @@ func CreateTables(db *sql.DB) {
 	exec(db, "CREATE INDEX prices_card_index ON prices(card_id)")
 	exec(db, "CREATE INDEX prices_set_index ON prices(set)")
 	exec(db, "CREATE INDEX prices_rarity_index ON prices(rarity)")
-	exec(db, "CREATE INDEX prices_low_index ON prices(low)")
-	exec(db, "CREATE INDEX prices_median_index ON prices(median)")
-	exec(db, "CREATE INDEX prices_high_index ON prices(high)")
+	exec(db, "CREATE INDEX prices_low_index ON prices(price_low)")
+	exec(db, "CREATE INDEX prices_median_index ON prices(price_median)")
+	exec(db, "CREATE INDEX prices_high_index ON prices(price_high)")
 	exec(db, "CREATE INDEX prices_names_trgm ON prices USING GIN(name gin_trgm_ops)")
 
 	exec(db, "CREATE INDEX sets_type_index ON sets(type)")
