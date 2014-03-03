@@ -236,8 +236,10 @@ func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 }
 
 func parseMoney(dollar string) int {
-	cents := strings.Replace(strings.Replace(dollar, ".", "", -1), "$", "", -1)
-	money, err := strconv.Atoi(strings.TrimSpace(cents))
+	for _, symbol := range []string{".", "$", ","} {
+		dollar = strings.Replace(dollar, symbol, "", -1)
+	}
+	money, err := strconv.Atoi(strings.TrimSpace(dollar))
 	if err != nil {
 		return 0
 	}
