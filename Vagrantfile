@@ -24,6 +24,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.define "api", primary: true do |api|
     api.vm.synced_folder ".", "/usr/local/deckbrew"
+    api.vm.synced_folder "~/projects/coiltap", "/usr/local/coiltap"
     api.vm.provision :chef_solo do |chef|
 
       chef.json = {
@@ -32,6 +33,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 "user" => ENV["DATABASE_USER"],
                 "password" => ENV["DATABASE_PASSWORD"],
               },
+              "coiltap" => "http://ec2-54-193-42-245.us-west-1.compute.amazonaws.com:9200/coiltap-dev",
               "hostname" => "http://localhost:6001",
               "event" => "vagrant-ready",
           }

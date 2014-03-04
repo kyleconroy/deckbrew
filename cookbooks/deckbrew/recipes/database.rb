@@ -20,6 +20,14 @@ package 'postgresql-9.3'
 package 'postgresql-contrib-9.3'
 package 'unzip'
 
+directory "/usr/local/gopath"
+
+template "go-profile" do
+  path "/etc/profile.d/go.sh"
+  source "goprofile.erb"
+  mode 0755
+end
+
 tar_extract 'https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz' do
   target_dir '/usr/local'
   creates '/usr/local/go/bin'
@@ -86,3 +94,21 @@ service "deckapi" do
 end
 
 
+if node['deckbrew']['coiltap'].length > 0 then
+  tar_extract 'https://github.com/kyleconroy/coiltap/releases/download/0.0.1/coiltap.tar.gz' do
+    target_dir '/usr/local/bin'
+    creates '/usr/local/bin/coiltap'
+  end
+  
+  template "coiltap" do
+    path "/etc/init/coiltap.conf"
+    source "coiltap.conf.erb"
+    notifies :restart, "service[coiltap]"
+  end
+  
+  service "coiltap" do
+    provider Chef::Provider::Service::Upstart
+    action [:enable, :start]
+    supports :status => true, :start => true, :stop => true, :restart => true
+  end
+end

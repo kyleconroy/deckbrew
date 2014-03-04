@@ -1,0 +1,10 @@
+description "Coiltap Monitoring"
+
+respawn
+
+start on [12345]
+
+script
+        exec coiltap -i lo -p 3000 -e "<%= node['deckbrew']['coiltap'] %>"
+end script
+
