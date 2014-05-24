@@ -231,7 +231,7 @@ func HandleCards(db *sql.DB, pl *PriceList, req *http.Request, w http.ResponseWr
 		cards[i].Fill(pl)
 	}
 
-	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, 0))
+	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, page))
 
 	return JSON(http.StatusOK, cards)
 }
