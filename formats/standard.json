@@ -2,7 +2,7 @@
   "name": "standard",
   "sets": [
     "rtr", "gtc", "dgm",
-    "m14", "ths", "bng"
+    "m14", "ths", "bng", "jou"
   ]
 }
 
