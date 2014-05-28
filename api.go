@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func GetHostname() string {
@@ -366,9 +367,23 @@ func NewApi() *martini.Martini {
 	return m
 }
 
-func main() {
-	flag.Parse()
+func updatePrices(db *sql.DB, pl *PriceList) {
+	for {
+		log.Println("Fetching new prices")
 
+		sets, err := FetchSets(db)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		pl.Prices = FetchPrices(db, sets)
+		time.Sleep(10 * time.Second)
+	}
+}
+
+func main() {
 	if flag.Arg(0) == "load" {
 		err := SyncDatabase(flag.Arg(1))
 

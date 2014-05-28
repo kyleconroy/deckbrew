@@ -288,10 +288,15 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 	return results, nil
 }
 
+type scrapeResult struct {
+	ID    string
+	Price Price
+}
+
 func FetchPrices(db *sql.DB, sets []Set) map[string]Price {
 	var wg sync.WaitGroup
 
-	prices := map[string]Price{}
+	pipeline := make(chan scrapeResult, 100)
 
 	for _, set := range sets {
 		wg.Add(1)
@@ -305,20 +310,27 @@ func FetchPrices(db *sql.DB, sets []Set) map[string]Price {
 			}
 
 			for id, price := range p {
-				prices[id] = price
+				pipeline <- scrapeResult{ID: id, Price: price}
 			}
 		}(set.Id, TCGSet(set.Id, set.Name))
 	}
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(pipeline)
+	}()
+
+	prices := map[string]Price{}
+
+	for result := range pipeline {
+		prices[result.ID] = result.Price
+	}
 
 	return prices
 }
 
 func UpdatePrices(db *sql.DB, pl *PriceList) {
 	for {
-		time.Sleep(50 * time.Minute)
-
 		log.Println("Fetching new prices")
 
 		sets, err := FetchSets(db)
@@ -329,6 +341,8 @@ func UpdatePrices(db *sql.DB, pl *PriceList) {
 		}
 
 		pl.Prices = FetchPrices(db, sets)
+
+		time.Sleep(50 * time.Minute)
 	}
 }
 
