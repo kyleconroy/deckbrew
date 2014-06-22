@@ -140,7 +140,7 @@ func AddFormat(c *Card, f *MTGFormat) {
 		c.FormatMap = map[string]string{}
 	}
 
-	for _, special := range []string{"phenomenon", "plane", "scheme", "vanguard"} {
+	for _, special := range []string{"conspiracy", "phenomenon", "plane", "scheme", "vanguard"} {
 		for _, t := range c.Types {
 			if t == special {
 				return
