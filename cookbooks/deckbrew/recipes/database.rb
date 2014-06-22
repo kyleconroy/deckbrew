@@ -28,7 +28,7 @@ template "go-profile" do
   mode 0755
 end
 
-tar_extract 'https://go.googlecode.com/files/go1.2.linux-amd64.tar.gz' do
+tar_extract 'https://storage.googleapis.com/golang/go1.3.linux-amd64.tar.gz' do
   target_dir '/usr/local'
   creates '/usr/local/go/bin'
 end
@@ -62,13 +62,18 @@ GO = {
 
 directory 'gopath'
 
-execute 'make clean deps brewapi' do
-  cwd '/usr/local/deckbrew'
-  environment (GO)
+%w(clean deps brewapi).each do |cmd|
+  execute "make #{cmd}" do
+    cwd '/usr/local/deckbrew'
+    environment (GO)
+  end
 end
 
-# Create the database
-execute 'make syncdb' do
+execute 'make cards.json' do
+  cwd '/usr/local/deckbrew'
+end
+
+execute './brewapi load cards.json' do
   cwd '/usr/local/deckbrew'
   user 'postgres'
   environment (GO)
@@ -78,7 +83,6 @@ execute 'make prices.json' do
   cwd '/usr/local/deckbrew'
   environment (GO)
 end
-
 
 # Upstart
 template "deckapi" do

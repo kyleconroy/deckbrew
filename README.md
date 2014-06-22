@@ -1,4 +1,16 @@
-## A Magic: The Gathering API
+# Deckbrew: A Magic: The Gathering API
+
+## Running Yourself
+
+Deckbrew requires an existing Postgres database, accessible using DATABASE_URL.
+A URL from Heroku or Amazon RDS will work. If you're running your own database,
+setup it up using these commands.
+
+```sql
+CREATE DATABASE deckbrew WITH template=template0 encoding='UTF8'
+```
+
+## API Documentation
 
 The DeckBrew Magic: The Gathering API is [open
 source](https://github.com/kyleconroy/deckbrew-api).  Please report any issues

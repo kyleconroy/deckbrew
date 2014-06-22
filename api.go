@@ -3,11 +3,10 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"github.com/codegangsta/martini"
-	"github.com/codegangsta/martini-contrib/gzip"
+	"github.com/go-martini/martini"
 	_ "github.com/lib/pq"
+	"github.com/martini-contrib/gzip"
 	"log"
 	"net/http"
 	"net/url"
@@ -381,59 +380,4 @@ func updatePrices(db *sql.DB, pl *PriceList) {
 		pl.Prices = FetchPrices(db, sets)
 		time.Sleep(10 * time.Second)
 	}
-}
-
-func main() {
-	if flag.Arg(0) == "load" {
-		err := SyncDatabase(flag.Arg(1))
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Println("Loaded all data into the database")
-		return
-	}
-
-	if flag.Arg(0) == "dump" {
-		err := DumpDatabase(flag.Arg(1), flag.Arg(2))
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Println("Dumped all data from the database to a file")
-		return
-	}
-
-	db, err := GetDatabase()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if flag.Arg(0) == "price" {
-		err := DumpPricing(db, flag.Arg(1))
-
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-
-		log.Println("Pulled all pricing data into a file")
-		return
-	}
-
-	prices, err := LoadPriceList("prices.json")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	go UpdatePrices(db, &prices)
-
-	m := NewApi()
-	m.Map(db)
-	m.Map(&prices)
-	m.Run()
 }

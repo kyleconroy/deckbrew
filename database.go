@@ -10,25 +10,14 @@ import (
 	"strings"
 )
 
-func GetDatabaseURL() (string, error) {
-	user := os.Getenv("DATABASE_USER")
-	pass := os.Getenv("DATABASE_PASSWORD")
+func getDatabase() (*sql.DB, error) {
+	url := os.Getenv("DATABASE_URL")
 
-	if user == "" || pass == "" {
-		return "", fmt.Errorf("DATABASE_USER and DATABASE_PASSWORD need to be set")
+	if url == "" {
+		return nil, fmt.Errorf("connection requires DATABASE_URL environment variable")
 	}
 
-	return fmt.Sprintf("host=localhost dbname=deckbrew user=%s password=%s sslmode=disable", user, pass), nil
-}
-
-func GetDatabase() (*sql.DB, error) {
-	u, err := GetDatabaseURL()
-
-	if err != nil {
-		return nil, err
-	}
-
-	db, err := sql.Open("postgres", u)
+	db, err := sql.Open("postgres", url)
 
 	if err != nil {
 		return db, err

@@ -1,0 +1,37 @@
+---
+- hosts: all
+  sudo: yes
+  vars:
+    go:
+      GOPATH: /usr/local/gopath
+      PATH: "{{ lookup('env', 'PATH') }}:/usr/local/go/bin"
+      DATABASE_PASSWORD: "{{deckbrew.db.password}}"
+      DATABASE_USER: "{{deckbrew.db.user}}"
+  tasks:
+    - apt_key: url=http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc
+    - apt_key: url=http://repo.varnish-cache.org/debian/GPG-key.txt
+    - apt_repository: repo='deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main'
+    - apt_repository: repo='deb http://repo.varnish-cache.org/ubuntu/ precise varnish-3.0'
+    - apt: name=make
+    - apt: name=mercurial
+    - apt: name=git
+    - apt: name=varnish
+    - apt: name=postgresql-9.3
+    - apt: name=postgresql-contrib-9.3
+    - apt: name=unzip
+    - file: path=/usr/local/gopath state=directory
+    - copy: src=files/go.sh dest=/etc/profile.d/ mode=0755
+    - get_url: url=https://storage.googleapis.com/golang/go1.3.linux-amd64.tar.gz dest=/tmp/go1.3.tar.gz
+    - unarchive: src=/tmp/go1.3.tar.gz dest=/usr/local creates=/usr/local/go/bin copy=false
+    - copy: src=files/default.vcl dest=/etc/varnish/default.vcl
+    - copy: src=files/deckbrew-cache.conf dest=/etc/default/varnish
+    - command: make clean deps brewapi cards.json chdir=/usr/local/deckbrew
+      environment: go
+    - command: ./brewapi load cards.json chdir=/usr/local/deckbrew
+      sudo_user: postgres
+      environment: go
+    - command: make prices.json chdir=/usr/local/deckbrew
+      environment: go
+
+
+      

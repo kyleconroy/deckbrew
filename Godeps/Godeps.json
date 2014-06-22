@@ -1,0 +1,36 @@
+{
+	"ImportPath": "github.com/kyleconroy/deckbrew-api",
+	"GoVersion": "go1.3",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go.net/html",
+			"Comment": "null-110",
+			"Rev": "2b669bbfb7baae43e63e0cbe3ebb83c9f9ebb3e5"
+		},
+		{
+			"ImportPath": "github.com/codegangsta/inject",
+			"Rev": "346a984957aa24276ebc5e7b16b3ac6a50fe8138"
+		},
+		{
+			"ImportPath": "github.com/go-martini/martini",
+			"Comment": "v1.0-rc1-18-g37d6716",
+			"Rev": "37d6716c45efb172cd7074a6f29de02945f17353"
+		},
+		{
+			"ImportPath": "github.com/lib/pq",
+			"Rev": "14b615cd107b21ba6d6b0fdcc04f6fd228604c5b"
+		},
+		{
+			"ImportPath": "github.com/martini-contrib/gzip",
+			"Rev": "c3f190769fc0769188614bbf077c82dacb8e9505"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "0330aef05c220120367226c43c7b583c72049eea"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "94e98a55fb412fcbcfc302555cb990f5e1590627"
+		}
+	]
+}

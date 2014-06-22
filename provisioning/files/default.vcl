@@ -1,0 +1,28 @@
+# This is a basic VCL configuration file for varnish.  See the vcl(7)
+# man page for details on VCL syntax and semantics.
+
+# Default backend definition.  Set this to point to your content
+# server.
+# 
+
+backend default {
+    .host = "127.0.0.1";
+    .port = "3000";
+}
+
+sub vcl_recv {
+    if (req.url ~ "^/ping") {
+        return(pass);
+    }
+    if (req.url ~ "^/mtg/cards/random") {
+        return(pass);
+    }
+    unset req.http.Cache-Control;
+    unset req.http.Cookie;
+    return(lookup);
+}
+
+sub vcl_fetch {
+    set beresp.ttl = 2h;
+    return(deliver);
+}
