@@ -369,6 +369,8 @@ func ServeWebsite() error {
 	pricelist := PriceList{}
 	pricelist.Prices = prices
 
+	go updatePrices(db, &pricelist)
+
 	m := NewApi()
 	m.Map(db)
 	m.Map(&pricelist)

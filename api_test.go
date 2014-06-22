@@ -38,7 +38,7 @@ func TestSlug(t *testing.T) {
 }
 
 func TestApi(t *testing.T) {
-	db, err := GetDatabase()
+	db, err := getDatabase()
 	pricelist := PriceList{}
 
 	if err != nil {
