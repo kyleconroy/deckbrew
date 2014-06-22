@@ -1,7 +1,6 @@
 {
   "variables": {
-    "deckbrew_password": "{{env `DECKBREW_PASSWORD`}}",
-    "deckbrew_src": "/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api"
+    "deckbrew_password": "{{env `DECKBREW_PASSWORD`}}"
   },
   "builders": [
     {
@@ -21,26 +20,16 @@
         "apt-get install -y apt-add-repository",
         "apt-add-repository -y ppa:rquillo/ansible",
         "apt-get update -y ",
-        "apt-get install -y ansible",
-        "mkdir -p /tmp/packer-provisioner-ansible-local",
-        "chmod -R 777 /tmp/packer-provisioner-ansible-local",
-        "mkdir -p {{user `deckbrew_src`}}",
-        "chmod -R 777 {{user `deckbrew_src`}}"
+        "apt-get install -y ansible git-core",
+        "mkdir -p /usr/local/gopath/src/github.com/kyleconroy",
+        "git clone https://github.com/kyleconroy/deckbrew-api.git /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api",
+        "chmod -R 777 /usr/local/gopath/src/github.com/kyleconroy"
       ]
-    },
-    {
-      "type": "file",
-      "source": "deckbrew/",
-      "destination": "{{user `deckbrew_src`}}" 
-    },
-    {
-      "type": "file",
-      "source": "provisioning/",
-      "destination": "/tmp/packer-provisioner-ansible-local"
     },
     {
       "type": "ansible-local",
       "playbook_file": "provisioning/api.yml",
+      "staging_directory": "/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/provisioning",
       "extra_arguments": [
         "--extra-vars='{\"deckbrew\": {\"password\": \"{{user  `deckbrew_password`}}\"}}'"
       ]

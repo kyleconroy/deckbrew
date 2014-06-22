@@ -3,23 +3,17 @@
 brewapi: *.go
 	godep go build -o brewapi
 
-serve: brewapi prices.json
-	./brewapi 
+serve: brewapi
+	./brewapi serve
 
-test: cards.json 
+test:
 	godep go test -v
 
-ami: deckbrew
+ami:
 	packer build templates/api.json
 
 imageami:
 	packer build templates/image.json
-
-deckbrew: Makefile *.go
-	mkdir -p deckbrew
-	cp *.go deckbrew
-	cp -r formats deckbrew
-	cp Makefile deckbrew
 
 clean:
 	rm -f brewapi
