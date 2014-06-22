@@ -147,10 +147,9 @@ type Edition struct {
 }
 
 type Price struct {
-	Low     int    `json:"low"`
-	Average int    `json:"median"`
-	High    int    `json:"high"`
-	Note    string `json:"note"`
+	Low     int `json:"low"`
+	Average int `json:"median"`
+	High    int `json:"high"`
 }
 
 type Set struct {
@@ -324,6 +323,7 @@ func NewApi() *martini.Martini {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("License", "The textual information presented through this API about Magic: The Gathering is copyrighted by Wizards of the Coast.")
 		w.Header().Set("Disclaimer", "This API is not produced, endorsed, supported, or affiliated with Wizards of the Coast.")
+		w.Header().Set("Pricing", "store.tcgplayer.com allows you to buy cards from any of our vendors, all at the same time, in a simple checkout experience. Shop, Compare & Save with TCGplayer.com!")
 	})
 
 	r := martini.NewRouter()
@@ -353,7 +353,7 @@ func updatePrices(db *sql.DB, pl *PriceList) {
 			log.Println(err)
 		}
 		pl.Prices = prices
-		time.Sleep(100 * time.Second)
+		time.Sleep(30 * time.Minute)
 	}
 }
 
