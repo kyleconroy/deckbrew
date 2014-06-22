@@ -1,6 +1,6 @@
 {
   "variables": {
-    "deckbrew_password": "{{env `DATABASE_PASSWORD`}}",
+    "deckbrew_password": "{{env `DECKBREW_PASSWORD`}}",
     "deckbrew_src": "/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api"
   },
   "builders": [
@@ -8,7 +8,7 @@
       "type": "amazon-ebs",
       "region": "us-west-1",
       "source_ami": "ami-c45f6281",
-      "instance_type": "t1.micro",
+      "instance_type": "m3.medium",
       "ssh_username": "ubuntu",
       "ami_name": "Deckbrew API {{isotime | clean_ami_name}}"
     }
@@ -18,7 +18,12 @@
       "type": "shell",
       "execute_command": "{{ .Vars }} sudo sh '{{ .Path }}'",
       "inline": [
-
+        "apt-get install -y apt-add-repository",
+        "apt-add-repository -y ppa:rquillo/ansible",
+        "apt-get update -y ",
+        "apt-get install -y ansible",
+        "mkdir -p /tmp/packer-provisioner-ansible-local",
+        "chmod -R 777 /tmp/packer-provisioner-ansible-local",
         "mkdir -p {{user `deckbrew_src`}}",
         "chmod -R 777 {{user `deckbrew_src`}}"
       ]
@@ -29,12 +34,16 @@
       "destination": "{{user `deckbrew_src`}}" 
     },
     {
+      "type": "file",
+      "source": "provisioning/",
+      "destination": "/tmp/packer-provisioner-ansible-local"
+    },
+    {
       "type": "ansible-local",
-      "playbook_file": "provisioning/api.yml"
-      "extra_arguments": {
-        "deckbrew": {
-          "password": "{{user  `deckbrew_password`}}"
-        }
+      "playbook_file": "provisioning/api.yml",
+      "extra_arguments": [
+        "--extra-vars='{\"deckbrew\": {\"password\": \"{{user  `deckbrew_password`}}\"}}'"
+      ]
     }
   ]
 }

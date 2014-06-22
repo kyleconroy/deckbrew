@@ -4,7 +4,7 @@
       "type": "amazon-ebs",
       "region": "us-west-1",
       "source_ami": "ami-c45f6281",
-      "instance_type": "t1.micro",
+      "instance_type": "m3.medium",
       "ssh_username": "ubuntu",
       "ami_name": "Deckbrew Images {{isotime | clean_ami_name}}"
     }
