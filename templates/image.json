@@ -11,9 +11,8 @@
   ],
   "provisioners": [
     {
-      "type": "chef-solo",
-      "cookbook_paths": ["cookbooks"],
-      "run_list": ["deckbrew::image"]
+      "type": "ansible-local",
+      "playbook_file": "provisioning/image.yml"
     }
   ]
 }

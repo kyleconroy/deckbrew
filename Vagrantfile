@@ -15,26 +15,27 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
-  config.vm.network :forwarded_port, guest: 80, host: 6001
-  config.vm.network :forwarded_port, guest: 3000, host: 6002
-
   config.vm.define "api", primary: true do |api|
+    api.vm.network :forwarded_port, guest: 80, host: 6001
+    api.vm.network :forwarded_port, guest: 3000, host: 6002
     api.vm.synced_folder ".", "/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api"
     api.vm.provision "ansible" do |ansible|
-      ansible.playbook = "provisioning/deckbrew.yml"
+      ansible.playbook = "provisioning/api.yml"
       ansible.verbose = 'vv'
       ansible.extra_vars = {
         deckbrew: {
           hostname: "http://localhost:6001",
+          password: ENV['DECKBREW_PASSWORD'],
         }
       }
     end
   end
 
   config.vm.define "image" do |image|
-    image.vm.provision :chef_solo do |chef|
-      chef.cookbooks_path = "cookbooks"
-      chef.add_recipe "deckbrew::image"
+    image.vm.network :forwarded_port, guest: 80, host: 6003
+    image.vm.provision "ansible" do |ansible|
+      ansible.playbook = "provisioning/image.yml"
+      ansible.verbose = 'vv'
     end
   end
 end

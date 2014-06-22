@@ -330,11 +330,9 @@ func fetchPrices(db *sql.DB, sets []Set) map[string]Price {
 	}()
 
 	prices := map[string]Price{}
-
 	for result := range pipeline {
 		prices[result.ID] = result.Price
 	}
-
 	return prices
 }
 

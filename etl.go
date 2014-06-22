@@ -185,15 +185,28 @@ func AddFormat(c *Card, f *MTGFormat) {
 
 // FIXME: Add Sets
 func CreateCollection(db *sql.DB, collection MTGCollection) error {
-	tx, err := db.Begin()
-	if err != nil {
+	var id string
+	err := db.QueryRow("SELECT id FROM sets LIMIT 1").Scan(&id)
+	switch {
+	case err == sql.ErrNoRows:
+		log.Println("no sets, starting load")
+	case err != nil:
 		return err
+	default:
+		log.Println("sets exist, skipping load")
+		return nil
 	}
+
 	formats, err := LoadFormats()
 	if err != nil {
 		return err
 	}
 	sets, cards := TransformCollection(collection, formats)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
 	for _, s := range sets {
 		_, err := tx.Exec("INSERT INTO sets (id, name, border, type) VALUES ($1, $2, $3, $4)",
 			s.Id, s.Name, s.Border, s.Type)
@@ -209,7 +222,8 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 		}
 		blob, err := json.Marshal(c)
 		if err != nil {
-			return tx.Rollback()
+			tx.Rollback()
+			return err
 		}
 		columns := []string{
 			"id", "name", "record", "rules", "mana_cost", "cmc",
@@ -226,7 +240,8 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 			CreateStringArray(c.Formats()), CreateStringArray(c.Status()),
 			CreateStringArray(c.MultiverseIds()))
 		if err != nil {
-			return tx.Rollback()
+			tx.Rollback()
+			return err
 		}
 		i += 1
 	}

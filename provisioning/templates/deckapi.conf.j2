@@ -1,0 +1,15 @@
+description "DeckBrew API"
+
+respawn
+
+start on 'filesystem'
+env DECKBREW_HOSTNAME="https://api.deckbrew.com"
+env DECKBREW_DATABASE="postgres://brewmaster:{{deckbrew.password}}@localhost/deckbrew?sslmode=disable"
+
+setuid brewmaster
+
+script
+        chdir /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+        exec ./brewapi serve
+end script
+

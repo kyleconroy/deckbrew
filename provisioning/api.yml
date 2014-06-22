@@ -1,0 +1,54 @@
+---
+- hosts: all
+  sudo: yes
+  vars:
+    go:
+      GOPATH: /usr/local/gopath
+      PATH: "{{ lookup('env', 'PATH') }}:/usr/local/go/bin:/usr/local/gopath/bin"
+      DECKBREW_DATABASE: "postgres://brewmaster:{{deckbrew.password}}@localhost/deckbrew?sslmode=disable"
+  tasks:
+    - apt_key: url=http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc
+    - apt_key: url=http://repo.varnish-cache.org/debian/GPG-key.txt
+    - apt_repository: repo='deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main'
+    - apt_repository: repo='deb http://repo.varnish-cache.org/ubuntu/ precise varnish-3.0'
+    - apt: name=make
+    - apt: name=mercurial
+    - apt: name=git
+    - apt: name=varnish
+    - apt: name=postgresql-9.3
+    - apt: name=postgresql-contrib-9.3
+    - apt: name=libpq-dev
+    - apt: name=python-psycopg2
+    - apt: name=unzip
+    - file: path=/usr/local/gopath state=directory
+    - copy: src=files/go.sh dest=/etc/profile.d/ mode=0755
+    - get_url: url=https://storage.googleapis.com/golang/go1.3.linux-amd64.tar.gz dest=/tmp/go1.3.tar.gz
+    - unarchive: src=/tmp/go1.3.tar.gz dest=/usr/local creates=/usr/local/go/bin copy=false
+    - copy: src=files/default.vcl dest=/etc/varnish/default.vcl
+    - copy: src=files/deckbrew-cache.conf dest=/etc/default/varnish
+    - copy: src=files/postgres.conf dest=/etc/postgresql/9.3/main/postgresql.conf
+      notify:
+      - restart postgresql
+    - command: go get github.com/tools/godep creates=/usr/local/gopath/bin/godep
+      environment: go
+    - command: make clean brewapi chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+      environment: go
+    - postgresql_db: name=deckbrew encoding='UTF-8' template='template0' lc_collate='en_US.UTF-8' lc_ctype='en_US.UTF-8'
+      sudo_user: postgres
+    - user: name=brewmaster system=yes
+    - postgresql_user: "name=brewmaster password={{deckbrew.password}} role_attr_flags=SUPERUSER"
+      sudo_user: postgres
+    - command: ./brewapi migrate chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+      sudo_user: postgres
+      environment: go
+    - postgresql_user: "name=brewmaster password={{deckbrew.password}} role_attr_flags=NOSUPERUSER"
+      sudo_user: postgres
+    - command: ./brewapi load chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+      sudo_user: postgres
+      environment: go
+    - template: src=templates/deckapi.conf.j2 dest=/etc/init/deckapi.conf
+    - service: name=deckapi state=restarted
+    - service: name=varnish state=restarted
+  handlers:
+    - name: restart postgresql
+      service: name=postgresql state=restarted

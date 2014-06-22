@@ -39,14 +39,14 @@ func MigrateDatabase() error {
 			log.Println(query)
 			_, err = tx.Exec(query)
 			if err != nil {
-				log.Println(err)
-				return tx.Rollback()
+				tx.Rollback()
+				return err
 			}
 		}
 		_, err = tx.Exec("INSERT INTO migrations (version) VALUES ($1)", schema)
 		if err != nil {
-			log.Println(err)
-			return tx.Rollback()
+			tx.Rollback()
+			return err
 		}
 		err = tx.Commit()
 		if err != nil {

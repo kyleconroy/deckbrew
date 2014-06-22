@@ -1,7 +1,7 @@
 {
   "variables": {
-    "deckbrew_database_user": "{{env `DATABASE_USER`}}",
-    "deckbrew_database_password": "{{env `DATABASE_PASSWORD`}}"
+    "deckbrew_password": "{{env `DATABASE_PASSWORD`}}",
+    "deckbrew_src": "/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api"
   },
   "builders": [
     {
@@ -18,27 +18,23 @@
       "type": "shell",
       "execute_command": "{{ .Vars }} sudo sh '{{ .Path }}'",
       "inline": [
-        "mkdir -p /usr/local/deckbrew",
-        "chmod -R 777 /usr/local/deckbrew"
+
+        "mkdir -p {{user `deckbrew_src`}}",
+        "chmod -R 777 {{user `deckbrew_src`}}"
       ]
     },
     {
       "type": "file",
       "source": "deckbrew/",
-      "destination": "/usr/local/deckbrew"
+      "destination": "{{user `deckbrew_src`}}" 
     },
     {
-      "type": "chef-solo",
-      "cookbook_paths": ["cookbooks"],
-      "json": {
+      "type": "ansible-local",
+      "playbook_file": "provisioning/api.yml"
+      "extra_arguments": {
         "deckbrew": {
-          "database": {
-            "user": "{{user  `deckbrew_database_user`}}",
-            "password": "{{user  `deckbrew_database_password`}}"
-          }
+          "password": "{{user  `deckbrew_password`}}"
         }
-      },
-      "run_list": ["deckbrew::database"]
     }
   ]
 }

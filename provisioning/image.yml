@@ -1,0 +1,10 @@
+---
+- hosts: all
+  sudo: yes
+  tasks:
+    - apt_repository: repo='ppa:nginx/stable'
+    - apt: name=nginx
+    - copy: src=files/image-proxy.conf dest=/etc/nginx/sites-available/image-proxy
+    - file: dest=/etc/nginx/sites-enabled/default state=absent
+    - file: src=/etc/nginx/sites-available/image-proxy dest=/etc/nginx/sites-enabled/image-proxy state=link
+    - service: name=nginx state=restarted
