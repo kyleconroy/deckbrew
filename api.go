@@ -19,11 +19,9 @@ import (
 
 func GetHostname() string {
 	hostname := os.Getenv("DECKBREW_HOSTNAME")
-
 	if hostname == "" {
 		return "http://localhost:3000"
 	}
-
 	return hostname
 }
 
@@ -207,32 +205,24 @@ type ApiError struct {
 
 func HandleCards(db *sql.DB, pl *PriceList, req *http.Request, w http.ResponseWriter) (int, []byte) {
 	cond, err, errors := ParseSearch(req.URL)
-
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusBadRequest, Errors(errors...))
 	}
-
 	page, err := CardsPaging(req.URL)
-
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusBadRequest, Errors(errors...))
 	}
-
 	cards, err := FetchCards(db, cond, page)
-
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors("Cards not found"))
 	}
-
 	for i, _ := range cards {
 		cards[i].Fill(pl)
 	}
-
 	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, page))
-
 	return JSON(http.StatusOK, cards)
 }
 
@@ -253,25 +243,20 @@ func HandleRandomCard(db *sql.DB, w http.ResponseWriter, r *http.Request) (int, 
 
 func HandleCard(db *sql.DB, pl *PriceList, params martini.Params) (int, []byte) {
 	card, err := FetchCard(db, params["id"])
-
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors("Card not found"))
 	}
-
 	card.Fill(pl)
-
 	return JSON(http.StatusOK, card)
 }
 
 func HandleSets(db *sql.DB) (int, []byte) {
 	sets, err := FetchSets(db)
-
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors("Sets not found"))
 	}
-
 	return JSON(http.StatusOK, sets)
 }
 
@@ -289,28 +274,23 @@ func HandleSet(db *sql.DB, params martini.Params) (int, []byte) {
 func HandleTerm(term string) func(*sql.DB) (int, []byte) {
 	return func(db *sql.DB) (int, []byte) {
 		terms, err := FetchTerms(db, term)
-
 		if err != nil {
 			log.Println(err)
 			return JSON(http.StatusNotFound, Errors(term+" not found"))
 		}
-
 		return JSON(http.StatusOK, terms)
 	}
 }
 
 func HandleTypeahead(db *sql.DB, pl *PriceList, req *http.Request) (int, []byte) {
 	cards, err := FetchTypeahead(db, req.URL.Query().Get("q"))
-
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors(" Can't find any cards that match that search"))
 	}
-
 	for i, _ := range cards {
 		cards[i].Fill(pl)
 	}
-
 	return JSON(http.StatusOK, cards)
 }
 
@@ -322,7 +302,6 @@ func Ping(db *sql.DB) (int, []byte) {
 	if db.Ping() != nil {
 		return JSON(http.StatusInternalServerError, Errors("The database could not be reached"))
 	}
-
 	return JSON(http.StatusOK, Pong{Rally: "serve"})
 }
 
@@ -369,15 +348,30 @@ func NewApi() *martini.Martini {
 func updatePrices(db *sql.DB, pl *PriceList) {
 	for {
 		log.Println("Fetching new prices")
-
-		sets, err := FetchSets(db)
-
+		prices, err := loadPrices(db)
 		if err != nil {
 			log.Println(err)
-			continue
 		}
-
-		pl.Prices = FetchPrices(db, sets)
-		time.Sleep(10 * time.Second)
+		pl.Prices = prices
+		time.Sleep(100 * time.Second)
 	}
+}
+
+func ServeWebsite() error {
+	db, err := getDatabase()
+	if err != nil {
+		return err
+	}
+	prices, err := loadPrices(db)
+	if err != nil {
+		return err
+	}
+	pricelist := PriceList{}
+	pricelist.Prices = prices
+
+	m := NewApi()
+	m.Map(db)
+	m.Map(&pricelist)
+	m.Run()
+	return nil
 }

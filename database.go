@@ -11,10 +11,10 @@ import (
 )
 
 func getDatabase() (*sql.DB, error) {
-	url := os.Getenv("DATABASE_URL")
+	url := os.Getenv("DECKBREW_DATABASE")
 
 	if url == "" {
-		return nil, fmt.Errorf("connection requires DATABASE_URL environment variable")
+		return nil, fmt.Errorf("connection requires DECKBREW_DATABASE environment variable")
 	}
 
 	db, err := sql.Open("postgres", url)
@@ -138,21 +138,12 @@ func FetchCards(db *sql.DB, cond Condition, page int) ([]Card, error) {
 func FetchCard(db *sql.DB, id string) (Card, error) {
 	var blob []byte
 	var card Card
-
 	err := db.QueryRow("SELECT record FROM cards WHERE id = $1", id).Scan(&blob)
-
 	if err == sql.ErrNoRows {
 		return card, fmt.Errorf("No card with ID %s", id)
 	}
 	if err != nil {
 		return card, err
 	}
-
-	err = json.Unmarshal(blob, &card)
-
-	if err != nil {
-		return card, err
-	}
-
-	return card, nil
+	return card, json.Unmarshal(blob, &card)
 }

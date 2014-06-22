@@ -19,21 +19,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.network :forwarded_port, guest: 3000, host: 6002
 
   config.vm.define "api", primary: true do |api|
-    api.vm.synced_folder ".", "/usr/local/deckbrew"
+    api.vm.synced_folder ".", "/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api"
     api.vm.provision "ansible" do |ansible|
       ansible.playbook = "provisioning/deckbrew.yml"
       ansible.verbose = 'vv'
       ansible.extra_vars = {
         deckbrew: {
-          db: {
-            user: ENV["DATABASE_USER"],
-            password: ENV["DATABASE_PASSWORD"],
-          },
           hostname: "http://localhost:6001",
         }
       }
     end
-    #          "event" => "vagrant-ready",
   end
 
   config.vm.define "image" do |image|

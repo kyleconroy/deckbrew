@@ -199,6 +199,19 @@ func Insert(columns []string, table string) string {
 	return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, c, v)
 }
 
+func Update(id, columns []string, table string) string {
+	values := []string{}
+
+	for i := range columns {
+		values = append(values, "$"+strconv.Itoa(i+1))
+	}
+
+	c := strings.Join(columns, ",")
+	v := strings.Join(values, ",")
+
+	return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, c, v)
+}
+
 func Select(fields ...string) Expression {
 	return Expression{Action: "SELECT", Fields: fields}
 }

@@ -1,11 +1,15 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	_ "github.com/lib/pq"
+	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -27,30 +31,26 @@ func ToSortedLower(things []string) []string {
 func ToUniqueLower(things []string) []string {
 	seen := map[string]bool{}
 	sorted := []string{}
-
 	for _, thing := range things {
 		if _, found := seen[thing]; !found {
 			sorted = append(sorted, strings.ToLower(thing))
 			seen[thing] = true
 		}
 	}
-
 	sort.Strings(sorted)
 	return sorted
 }
 
 func transformRarity(rarity string) string {
 	r := strings.ToLower(rarity)
-
-	if r == "mythic rare" {
+	switch r {
+	case "mythic rare":
 		return "mythic"
-	}
-
-	if r == "basic land" {
+	case "basic land":
 		return "basic"
+	default:
+		return r
 	}
-
-	return r
 }
 
 func TransformEdition(s MTGSet, c MTGCard) Edition {
@@ -186,53 +186,38 @@ func AddFormat(c *Card, f *MTGFormat) {
 // FIXME: Add Sets
 func CreateCollection(db *sql.DB, collection MTGCollection) error {
 	tx, err := db.Begin()
-
 	if err != nil {
 		return err
 	}
-
 	formats, err := LoadFormats()
-
 	if err != nil {
 		return err
 	}
-
 	sets, cards := TransformCollection(collection, formats)
-
 	for _, s := range sets {
 		_, err := tx.Exec("INSERT INTO sets (id, name, border, type) VALUES ($1, $2, $3, $4)",
 			s.Id, s.Name, s.Border, s.Type)
-
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-
 	i := 0
-
 	for _, c := range cards {
-
 		if i >= 1000 {
 			log.Println("Added 1000 cards to the database")
 		}
-
 		blob, err := json.Marshal(c)
-
 		if err != nil {
-			tx.Rollback()
-			return err
+			return tx.Rollback()
 		}
-
 		columns := []string{
 			"id", "name", "record", "rules", "mana_cost", "cmc",
 			"power", "toughness", "loyalty", "multicolor", "rarities",
 			"types", "subtypes", "supertypes", "colors", "sets",
 			"formats", "status", "mids",
 		}
-
 		q := Insert(columns, "cards")
-
 		_, err = tx.Exec(q, c.Id, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
 			c.Power, c.Toughness, c.Loyalty, c.Multicolor(),
 			CreateStringArray(c.Rarities()), CreateStringArray(c.Types),
@@ -240,15 +225,11 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 			CreateStringArray(c.Colors), CreateStringArray(c.Sets()),
 			CreateStringArray(c.Formats()), CreateStringArray(c.Status()),
 			CreateStringArray(c.MultiverseIds()))
-
 		if err != nil {
-			tx.Rollback()
-			return err
+			return tx.Rollback()
 		}
-
 		i += 1
 	}
-
 	return tx.Commit()
 }
 
@@ -274,105 +255,58 @@ func LoadFormats() ([]MTGFormat, error) {
 	return formats, nil
 }
 
-func exec(db *sql.DB, query string, args ...interface{}) {
-	if _, err := db.Exec(query, args...); err != nil {
-		log.Fatal(query, " ", err)
+// I probably should have just kept the Makefile
+func DownloadCards(url, path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil
 	}
-}
-
-func CreateDatabase(db *sql.DB) {
-	user := os.Getenv("DATABASE_USER")
-	pass := os.Getenv("DATABASE_PASSWORD")
-
-	if user == "" || pass == "" {
-		log.Fatal("DATABASE_USER and DATABASE_PASSWORD must be set")
-	}
-
-	exec(db, "DROP DATABASE IF EXISTS deckbrew")
-	exec(db, "DROP USER IF EXISTS "+user)
-	exec(db, "CREATE DATABASE deckbrew WITH template=template0 encoding='UTF8'")
-	exec(db, "CREATE USER "+user+" WITH PASSWORD '"+pass+"'")
-	exec(db, "GRANT ALL PRIVILEGES ON DATABASE deckbrew TO "+user)
-}
-
-func SyncDatabase(path string) error {
-	host := os.Getenv("DATABASE_HOST")
-
-	if host == "" {
-		host = "localhost"
-	}
-
-	master, err := sql.Open("postgres", "host="+host+" sslmode=disable")
-
+	out, err := os.OpenFile(path, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
-
-	if master.Ping() != nil {
-		log.Println("Can't create database")
-		return master.Ping()
-	}
-
-	CreateDatabase(master)
-
-	sdb, err := sql.Open("postgres", "host="+host+" dbname=deckbrew sslmode=disable")
-
+	defer out.Close()
+	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
-
-	if sdb.Ping() != nil {
-		log.Println("Can't create tables")
-		return sdb.Ping()
-	}
-
-	//CreateTables(sdb)
-
-	collection, err := LoadCollection(path)
-
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-
-	db, err := getDatabase()
-
+	r, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
 	if err != nil {
 		return err
 	}
-
-	err = CreateCollection(db, collection)
-
-	if err != nil {
-		return err
+	for _, f := range r.File {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(out, rc)
+		if err != nil {
+			return err
+		}
+		rc.Close()
 	}
-
 	return nil
 }
 
-func DumpDatabase(inpath string, outpath string) error {
-	collection, err := LoadCollection(inpath)
-
+func SyncDatabase() error {
+	path := "cards.json"
+	log.Println("downloading cards from mtgjson.com")
+	err := DownloadCards("http://mtgjson.com/json/AllSets-x.json.zip", path)
 	if err != nil {
 		return err
 	}
-
-	formats, err := LoadFormats()
-
+	log.Println("loading cards into database")
+	collection, err := LoadCollection(path)
 	if err != nil {
 		return err
 	}
-
-	_, cards := TransformCollection(collection, formats)
-
+	db, err := getDatabase()
 	if err != nil {
 		return err
 	}
-
-	blob, err := json.Marshal(cards)
-
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(outpath, blob, 0644)
+	return CreateCollection(db, collection)
 }

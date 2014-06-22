@@ -3,10 +3,8 @@ package main
 import (
 	"code.google.com/p/go.net/html"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 func ReplaceUnicode(name string) string {
@@ -103,46 +100,56 @@ func TCGName(name string) string {
 }
 
 func TCGSet(setId, set string) string {
-	sets := map[string]string{
-		"10E": "10th Edition",
-		"9ED": "9th Edition",
-		"8ED": "8th Edition",
-		"7ED": "7th Edition",
-		"M14": "Magic 2014 (M14)",
-		"M13": "Magic 2013 (M13)",
-		"M12": "Magic 2012 (M12)",
-		"M11": "Magic 2011 (M11)",
-		"M10": "Magic 2010",
-		"RAV": "Ravnica",
-		"DDG": "Duel Decks: Knights vs Dragons",
-		"DDL": "Duel Decks: Heroes vs. Monsters",
-		"PC2": "Planechase 2012",
-		"C13": "Commander 2013",
-		"PD2": "Premium Deck Series: Fire and Lightning",
-		"LEB": "Beta Edition",
-		"LEA": "Alpha Edition",
-		"TSB": "Timeshifted",
+	switch setId {
+	case "10E":
+		return "10th Edition"
+	case "9ED":
+		return "9th Edition"
+	case "8ED":
+		return "8th Edition"
+	case "7ED":
+		return "7th Edition"
+	case "M14":
+		return "Magic 2014 (M14)"
+	case "M13":
+		return "Magic 2013 (M13)"
+	case "M12":
+		return "Magic 2012 (M12)"
+	case "M11":
+		return "Magic 2011 (M11)"
+	case "M10":
+		return "Magic 2010 (M10)"
+	case "CMD":
+		return "Commander"
+	case "HHO":
+		return "Special Occasion"
+	case "RAV":
+		return "Ravnica"
+	case "DDG":
+		return "Duel Decks: Knights vs Dragons"
+	case "DDL":
+		return "Duel Decks: Heroes vs. Monsters"
+	case "PC2":
+		return "Planechase 2012"
+	case "C13":
+		return "Commander 2013"
+	case "PD2":
+		return "Premium Deck Series: Fire and Lightning"
+	case "LEB":
+		return "Beta Edition"
+	case "LEA":
+		return "Alpha Edition"
+	case "TSB":
+		return "Timeshifted"
+	case "MD1":
+		return "Magic Modern Event Deck"
+	case "CNS":
+		return "Conspiracy"
+	case "DKM":
+		return "Deckmasters Garfield vs. Finkel"
+	default:
+		return set
 	}
-	if sets[setId] != "" {
-		return sets[setId]
-	}
-	return set
-}
-
-func LoadPriceList(path string) (PriceList, error) {
-	blob, err := ioutil.ReadFile(path)
-
-	if err != nil {
-		return PriceList{}, err
-	}
-
-	var pl PriceList
-	err = json.Unmarshal(blob, &pl)
-
-	if err != nil {
-		return PriceList{}, err
-	}
-	return pl, nil
 }
 
 func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
@@ -154,11 +161,13 @@ func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 		"ME3": true,
 		"ME4": true,
 		"PPR": true,
-		"VAN": true,
+		"VMA": true,
+		"RQS": true,
+		"ITP": true,
 	}
 
 	if skip[setId] {
-		return finalPrices, fmt.Errorf("TCGPlayer doesn't support %s", setName)
+		return finalPrices, fmt.Errorf("TCGPlayer doesn't support sets %s", setName)
 	}
 
 	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(setName)
@@ -225,7 +234,9 @@ func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 		}
 
 		if _, ok := prices[TCGName(c.Name)]; !ok {
-			log.Println("NOT FOUND", setName, c.Name)
+			if e.Layout != "vanguard" {
+				log.Println("NOT FOUND", e.SetId, setName, c.Name)
+			}
 			continue
 		}
 
@@ -293,7 +304,7 @@ type scrapeResult struct {
 	Price Price
 }
 
-func FetchPrices(db *sql.DB, sets []Set) map[string]Price {
+func fetchPrices(db *sql.DB, sets []Set) map[string]Price {
 	var wg sync.WaitGroup
 
 	pipeline := make(chan scrapeResult, 100)
@@ -329,39 +340,19 @@ func FetchPrices(db *sql.DB, sets []Set) map[string]Price {
 	return prices
 }
 
-func UpdatePrices(db *sql.DB, pl *PriceList) {
-	for {
-		log.Println("Fetching new prices")
-
-		sets, err := FetchSets(db)
-
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		pl.Prices = FetchPrices(db, sets)
-
-		time.Sleep(50 * time.Minute)
+func loadPrices(db *sql.DB) (map[string]Price, error) {
+	sets, err := FetchSets(db)
+	if err != nil {
+		return map[string]Price{}, err
 	}
+	return fetchPrices(db, sets), nil
 }
 
-func DumpPricing(db *sql.DB, output string) error {
-	sets, err := FetchSets(db)
-
+func GeneratePrices() error {
+	db, err := getDatabase()
 	if err != nil {
 		return err
 	}
-
-	prices := FetchPrices(db, sets)
-
-	pl := PriceList{Prices: prices}
-
-	blob, err := json.Marshal(pl)
-
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(output, blob, 0644)
+	_, err = loadPrices(db)
+	return err
 }
