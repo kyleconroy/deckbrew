@@ -1,17 +1,21 @@
 package main
 
 import (
-	"code.google.com/p/go.net/html"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+
+	"code.google.com/p/go.net/html"
 )
 
 func ReplaceUnicode(name string) string {
@@ -342,6 +346,28 @@ func loadPrices(db *sql.DB) (map[string]Price, error) {
 		return map[string]Price{}, err
 	}
 	return fetchPrices(db, sets), nil
+}
+
+func loadCachedPrices(db *sql.DB) (map[string]Price, error) {
+	if _, err := os.Stat("prices.json"); err == nil {
+		blob, err := ioutil.ReadFile("prices.json")
+		prices := map[string]Price{}
+		err = json.Unmarshal(blob, &prices)
+		return prices, err
+	}
+
+	prices, err := loadPrices(db)
+	if err != nil {
+		return prices, err
+	}
+
+	blob, err := json.Marshal(prices)
+	if err != nil {
+		return prices, err
+	}
+
+	err = ioutil.WriteFile("prices.json", blob, 0644)
+	return prices, err
 }
 
 func GeneratePrices() error {

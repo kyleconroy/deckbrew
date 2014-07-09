@@ -4,9 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/go-martini/martini"
-	_ "github.com/lib/pq"
-	"github.com/martini-contrib/gzip"
 	"log"
 	"net/http"
 	"net/url"
@@ -15,6 +12,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/go-martini/martini"
+	_ "github.com/lib/pq"
+	"github.com/martini-contrib/gzip"
 )
 
 func GetHostname() string {
@@ -167,7 +168,7 @@ func (s *Set) Fill() {
 }
 
 func JSON(code int, val interface{}) (int, []byte) {
-	blob, err := json.Marshal(val)
+	blob, err := json.MarshalIndent(val, "", "  ")
 
 	if err != nil {
 		return 500, []byte(`{"error": "Internal server error :("}"`)
@@ -362,14 +363,12 @@ func ServeWebsite() error {
 	if err != nil {
 		return err
 	}
-	prices, err := loadPrices(db)
+	prices, err := loadCachedPrices(db)
 	if err != nil {
 		return err
 	}
 	pricelist := PriceList{}
 	pricelist.Prices = prices
-
-	go updatePrices(db, &pricelist)
 
 	m := NewApi()
 	m.Map(db)

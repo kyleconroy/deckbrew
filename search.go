@@ -89,7 +89,11 @@ func (s *Search) ParseMulticolor() error {
 }
 
 func (s *Search) ParseMultiverseId() error {
-	return s.addQuery("mids", s.Args["multiverseid"])
+	ids := s.Args["multiverseid"][:]
+	for _, m := range s.Args["m"] {
+		ids = append(ids, m)
+	}
+	return s.addQuery("mids", ids)
 }
 
 func (s *Search) ParseSupertypes() error {
