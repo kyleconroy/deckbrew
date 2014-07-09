@@ -12,6 +12,9 @@ test:
 ami:
 	packer build templates/api.json
 
+prices.json: brewapi
+	./brewapi price
+
 imageami:
 	packer build templates/image.json
 

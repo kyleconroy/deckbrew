@@ -34,6 +34,8 @@
       environment: go
     - command: make clean brewapi chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
       environment: go
+    - command: make prices.json chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+      environment: go
     - postgresql_db: name=deckbrew encoding='UTF-8' template='template0' lc_collate='en_US.UTF-8' lc_ctype='en_US.UTF-8'
       sudo_user: postgres
     - user: name=brewmaster system=yes

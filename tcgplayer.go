@@ -375,6 +375,6 @@ func GeneratePrices() error {
 	if err != nil {
 		return err
 	}
-	_, err = loadPrices(db)
+	_, err = loadCachedPrices(db)
 	return err
 }

@@ -325,6 +325,7 @@ func NewApi() *martini.Martini {
 		w.Header().Set("License", "The textual information presented through this API about Magic: The Gathering is copyrighted by Wizards of the Coast.")
 		w.Header().Set("Disclaimer", "This API is not produced, endorsed, supported, or affiliated with Wizards of the Coast.")
 		w.Header().Set("Pricing", "store.tcgplayer.com allows you to buy cards from any of our vendors, all at the same time, in a simple checkout experience. Shop, Compare & Save with TCGplayer.com!")
+		w.Header().Set("Strict-Transport-Security", "max-age=86400")
 	})
 
 	r := martini.NewRouter()
@@ -348,13 +349,13 @@ func NewApi() *martini.Martini {
 
 func updatePrices(db *sql.DB, pl *PriceList) {
 	for {
+		time.Sleep(30 * time.Minute)
 		log.Println("Fetching new prices")
 		prices, err := loadPrices(db)
 		if err != nil {
 			log.Println(err)
 		}
 		pl.Prices = prices
-		time.Sleep(30 * time.Minute)
 	}
 }
 
@@ -369,6 +370,8 @@ func ServeWebsite() error {
 	}
 	pricelist := PriceList{}
 	pricelist.Prices = prices
+
+	go updatePrices(db, &pricelist)
 
 	m := NewApi()
 	m.Map(db)
