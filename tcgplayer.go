@@ -113,6 +113,8 @@ func TCGSet(setId, set string) string {
 		return "8th Edition"
 	case "7ED":
 		return "7th Edition"
+	case "M15":
+		return "Magic 2015 (M15)"
 	case "M14":
 		return "Magic 2014 (M14)"
 	case "M13":
