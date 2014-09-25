@@ -153,6 +153,8 @@ func TCGSet(setId, set string) string {
 		return "Conspiracy"
 	case "DKM":
 		return "Deckmasters Garfield vs. Finkel"
+	case "KTK":
+		return "Khans of Tarkir"
 	default:
 		return set
 	}

@@ -10,6 +10,11 @@ setup it up using these commands.
 CREATE DATABASE deckbrew WITH template=template0 encoding='UTF8'
 ```
 
+## Adding a new set
+
+- Update the standard and modern format definitions
+- Add the pricing name information to tcg player
+
 ## API Documentation
 
 The DeckBrew Magic: The Gathering API is [open

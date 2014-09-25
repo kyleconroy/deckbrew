@@ -1,8 +1,8 @@
 {
   "name": "standard",
   "sets": [
-    "rtr", "gtc", "dgm", "m14",
-    "ths", "bng", "jou", "m15"
+    "ths", "bng", "jou", "m15",
+    "ktk"
   ]
 }
 
