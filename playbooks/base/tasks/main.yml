@@ -1,0 +1,106 @@
+### USER PROVISIONING
+
+- name: "Enable passwordless sudo"
+  lineinfile: >
+    dest=/etc/sudoers
+    state=present
+    regexp="^%sudo"
+    line="%sudo ALL=(ALL) NOPASSWD: ALL"
+
+### PACKAGING
+
+- name: "Enable multiverse packages"
+  replace: >
+    dest=/etc/apt/sources.list
+    regexp="^(.* universe)$"
+    replace="\1 multiverse"
+
+- name: "Update and upgrade all packages"
+  apt: >
+    update_cache=yes
+    upgrade=yes
+
+- name: "Install EC2 AMI tools"
+  apt: >
+    name=ec2-ami-tools
+    state=installed
+
+### SECURITY
+
+- name: "Disallow password authentication"
+  lineinfile: >
+    dest=/etc/ssh/sshd_config
+    regexp="^PasswordAuthentication"
+    line="PasswordAuthentication no"
+    state=present
+  notify: "Restart ssh"
+
+- name: "Disallow root SSH access"
+  lineinfile: >
+    dest=/etc/ssh/sshd_config
+    regexp="^PermitRootLogin"
+    line="PermitRootLogin no"
+    state=present
+  notify: "Restart ssh"
+
+- name: "Install unattended-upgrades"
+  apt: >
+    name=unattended-upgrades
+    state=present
+
+- name: "Make sure unattended-upgrades only installs from $ubuntu_release-security"
+  lineinfile: >
+    dest=/etc/apt/apt.conf.d/50unattended-upgrades
+    regexp="$ubuntu_release-updates"
+    state=absent
+
+### AWS
+
+- name: "Install AWS CLI tools"
+  easy_install: >
+    name=awscli
+
+
+### PACKAGES
+
+- name: "Set the locale to include UTF-8"
+  locale_gen: >
+    name=en_US.UTF-8 state=present
+
+- name: "Add the PostgreSQL public key to the keychain"
+  apt_key: >
+    url=http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc
+
+- name: "Add the PostgreSQL package repository"
+  apt_repository: >
+    repo='deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main'
+
+- name: "Add the Varnish public key to the keychain"
+  apt_key: >
+    url=http://repo.varnish-cache.org/debian/GPG-key.txt
+
+- name: "Add the Varnish package repository"
+  apt_repository: >
+    repo='deb http://repo.varnish-cache.org/ubuntu/ precise varnish-3.0'
+
+- apt: name=make
+- apt: name=mercurial
+- apt: name=git
+- apt: name=varnish
+- apt: name=postgresql-9.3
+- apt: name=postgresql-contrib-9.3
+- apt: name=libpq-dev
+- apt: name=python-psycopg2
+- apt: name=unzip
+  
+- name: "Download Go 1.3"
+  get_url: >
+    url=https://storage.googleapis.com/golang/go1.3.linux-amd64.tar.gz
+    dest=/tmp/go1.3.tar.gz
+
+- name: "Install Go 1.3"
+  unarchive: >
+    src=/tmp/go1.3.tar.gz
+    dest=/usr/local
+    creates=/usr/local/go/bin
+    copy=false
