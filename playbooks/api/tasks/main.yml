@@ -1,0 +1,64 @@
+- name: "Configure Varnish defaults"
+  copy:
+    src: default.vcl
+    dest: /etc/varnish/default.vcl
+
+- name: "Configure API caching"
+  copy:
+    src: deckbrew-cache.conf
+    dest: /etc/default/varnish
+
+- name: "Configure PostgreSQL"
+  copy:
+    src: postgres.conf
+    dest: /etc/postgresql/9.3/main/postgresql.conf
+  notify:
+    - restart postgresql
+
+- file:
+   path: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+   state: directory
+
+- name: "Copy the Deckbrew API binary"
+  copy:
+    src: brewapi-linux
+    dest: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/brewapi
+    mode: 777
+
+- name: "Create the database"
+  sudo_user: postgres
+  postgresql_db:
+    name: deckbrew
+    encoding: UTF-8
+    template: template0
+    lc_collate: en_US.UTF-8
+    lc_ctype: en_US.UTF-8
+
+- user:
+    name: brewmaster
+    system: yes
+
+- postgresql_user: "name=brewmaster password={{db_password}} role_attr_flags=SUPERUSER"
+  sudo_user: postgres
+
+- name: "Migrate database"
+  command: >
+    ./brewapi migrate 
+    chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+  environment: go
+  sudo_user: postgres
+
+- postgresql_user: "name=brewmaster password={{db_password}} role_attr_flags=NOSUPERUSER"
+  sudo_user: postgres
+
+- command: ./brewapi load chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+  environment: go
+  sudo_user: postgres
+
+- command: ./brewapi price chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+  environment: go
+  sudo_user: postgres
+
+- template: src=templates/deckapi.conf.j2 dest=/etc/init/deckapi.conf
+- service: name=deckapi state=restarted
+- service: name=varnish state=restarted

@@ -15,6 +15,9 @@ ami:
 prices.json: brewapi
 	./brewapi price
 
+playbooks/api/files/brewapi-linux:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 godep go build -o brewapi-linux
+
 imageami:
 	packer build templates/image.json
 

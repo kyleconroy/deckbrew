@@ -1,5 +1,6 @@
 cards.json
 prices.json
-/deckbrew
 brewapi
 .vagrant
+env
+playbooks/api/files/brewapi-linux
