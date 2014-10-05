@@ -103,6 +103,10 @@ func TransformCollection(collection MTGCollection, formats []MTGFormat) ([]Set, 
 	sets := []Set{}
 
 	for _, set := range collection {
+		if strings.HasPrefix(set.Name, "p") {
+			continue
+		}
+
 		sets = append(sets, TransformSet(set))
 
 		for _, card := range set.Cards {

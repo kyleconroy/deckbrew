@@ -163,6 +163,10 @@ func TCGSet(setId, set string) string {
 func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 	finalPrices := map[string]Price{}
 
+	if strings.HasPrefix(setId, "p") {
+		return finalPrices, fmt.Errorf("TCGPLayer doesn't support promo prices")
+	}
+
 	skip := map[string]bool{
 		"MED": true,
 		"ME2": true,
