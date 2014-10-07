@@ -6,7 +6,7 @@
 
 - name: "Add the image proxy NGINX configuration"
   copy: >
-    src=files/image-proxy.conf
+    src=image-proxy.conf
     dest=/etc/nginx/sites-available/image-proxy
 
 - name: "Delete the default configuration"

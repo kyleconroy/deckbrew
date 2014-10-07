@@ -370,7 +370,7 @@ func loadCachedPrices(db *sql.DB) (map[string]Price, error) {
 		return prices, err
 	}
 
-	err = ioutil.WriteFile("prices.json", blob, 0644)
+	err = ioutil.WriteFile("prices.json", blob, 0777)
 	return prices, err
 }
 

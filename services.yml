@@ -11,16 +11,11 @@
     - 80
     - 443
 
-- name: api
+- name: deckbrew
   instance_routing: public
   load_balancer: true
   load_balancer_routing: public
   load_balancer_port: 443
   load_balancer_proxy_protocol: true
-
-- name: image
-  instance_routing: public
-  load_balancer: true
-  load_balancer_routing: public
-  load_balancer_port: 443
-  load_balancer_proxy_protocol: true
+  load_balancer_health_check_port: 8080
+  load_balancer_health_check_path: /healthcheck
