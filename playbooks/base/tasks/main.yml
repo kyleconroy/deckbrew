@@ -54,12 +54,6 @@
     regexp="$ubuntu_release-updates"
     state=absent
 
-### AWS
-
-- name: "Install AWS CLI tools"
-  easy_install: >
-    name=awscli
-
 
 ### PACKAGES
 
@@ -83,6 +77,7 @@
   apt_repository: >
     repo='deb http://repo.varnish-cache.org/ubuntu/ precise varnish-3.0'
 
+- apt: name=python-setuptools
 - apt: name=make
 - apt: name=mercurial
 - apt: name=git
@@ -104,3 +99,8 @@
     dest=/usr/local
     creates=/usr/local/go/bin
     copy=false
+
+### AWS
+- name: "Install AWS CLI tools"
+  easy_install: >
+    name=awscli

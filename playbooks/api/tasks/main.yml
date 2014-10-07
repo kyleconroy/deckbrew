@@ -16,14 +16,24 @@
     - restart postgresql
 
 - file:
-   path: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+   path: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats
    state: directory
+   recurse: true
+   owner: root
+
+- command: chmod -R 777 /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/
 
 - name: "Copy the Deckbrew API binary"
   copy:
     src: brewapi-linux
     dest: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/brewapi
     mode: 777
+
+- copy: src=commander.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats/
+- copy: src=vintage.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats/
+- copy: src=modern.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats
+- copy: src=standard.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats/
+- copy: src=legacy.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats/
 
 - name: "Create the database"
   sudo_user: postgres
@@ -51,7 +61,21 @@
 - postgresql_user: "name=brewmaster password={{db_password}} role_attr_flags=NOSUPERUSER"
   sudo_user: postgres
 
-- command: ./brewapi load chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+- name: Download card file
+  get_url:
+    dest: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/AllSets-x.json.zip
+    url: http://mtgjson.com/json/AllSets-x.json.zip
+    mode: 777
+
+- name: Unpack cards
+  command:
+    unzip AllSets-x.json.zip
+    creates=AllSets-x.json
+    chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+
+- command: >
+    ./brewapi load
+    chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
   environment: go
   sudo_user: postgres
 
@@ -59,6 +83,8 @@
   environment: go
   sudo_user: postgres
 
-- template: src=templates/deckapi.conf.j2 dest=/etc/init/deckapi.conf
+- template:
+    src: deckapi.conf.j2
+    dest: /etc/init/deckapi.conf
 - service: name=deckapi state=restarted
 - service: name=varnish state=restarted

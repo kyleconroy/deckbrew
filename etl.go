@@ -1,16 +1,10 @@
 package main
 
 import (
-	"archive/zip"
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	_ "github.com/lib/pq"
-	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"os"
 	"sort"
 	"strings"
 )
@@ -274,52 +268,8 @@ func LoadFormats() ([]MTGFormat, error) {
 	return formats, nil
 }
 
-// I probably should have just kept the Makefile
-func DownloadCards(url, path string) error {
-	if _, err := os.Stat(path); err == nil {
-		return nil
-	}
-	out, err := os.OpenFile(path, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	r, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
-	if err != nil {
-		return err
-	}
-	for _, f := range r.File {
-		rc, err := f.Open()
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(out, rc)
-		if err != nil {
-			return err
-		}
-		rc.Close()
-	}
-	return nil
-}
-
 func SyncDatabase() error {
-	path := "cards.json"
-	log.Println("downloading cards from mtgjson.com")
-	err := DownloadCards("http://mtgjson.com/json/AllSets-x.json.zip", path)
-	if err != nil {
-		return err
-	}
-	log.Println("loading cards into database")
-	collection, err := LoadCollection(path)
+	collection, err := LoadCollection("AllSets-x.json")
 	if err != nil {
 		return err
 	}
