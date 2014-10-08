@@ -4,5 +4,4 @@
   gather_facts: false
   roles:
     - base
-    - api
     - image

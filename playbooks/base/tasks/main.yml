@@ -38,6 +38,13 @@
     name=ec2-ami-tools
     state=installed
 
+### TIME
+
+- name: Install ntp
+  apt:
+    name: ntp
+    state: present
+
 ### SECURITY
 
 - name: "Disallow password authentication"
