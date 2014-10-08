@@ -19,3 +19,12 @@
   load_balancer_proxy_protocol: true
   load_balancer_health_check_port: 80
   load_balancer_health_check_path: /ping
+
+- name: image
+  instance_routing: public
+  load_balancer: true
+  load_balancer_routing: public
+  load_balancer_port: 80
+  load_balancer_proxy_protocol: true
+  load_balancer_health_check_port: 80
+  load_balancer_health_check_path: /healthcheck
