@@ -7,6 +7,19 @@
     regexp="^%sudo"
     line="%sudo ALL=(ALL) NOPASSWD: ALL"
 
+- name: "Add user account"
+  user: >
+    name={{ item.key }}
+    shell={{ item.value.shell | default('/bin/bash') }}
+    groups=sudo append=yes
+  with_dict: users
+
+- name: "Add user SSH key"
+  authorized_key: >
+    user="{{ item.key }}"
+    key="{{ item.value.ssh }}"
+  with_dict: users
+
 ### PACKAGING
 
 - name: "Enable multiverse packages"
