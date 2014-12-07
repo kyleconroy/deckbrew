@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -125,8 +124,6 @@ func FetchCards(db *sql.DB, cond Condition, page int) ([]Card, error) {
 	if err != nil {
 		return []Card{}, err
 	}
-
-	log.Println(ql, items)
 
 	rows, err := db.Query(ql, items...)
 
