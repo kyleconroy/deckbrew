@@ -1,0 +1,28 @@
+- name: bastion
+  instance_routing: public
+  load_balancer: false
+  global_ingress_ports:
+    - 22
+
+- name: nat
+  instance_routing: public
+  load_balancer: false
+  global_ingress_ports:
+    - 80
+    - 443
+
+- name: deckbrew
+  instance_routing: public
+  load_balancer: true
+  load_balancer_routing: public
+  load_balancer_port: 80
+  load_balancer_health_check_port: 80
+  load_balancer_health_check_path: /ping
+
+- name: image
+  instance_routing: public
+  load_balancer: true
+  load_balancer_routing: public
+  load_balancer_port: 80
+  load_balancer_health_check_port: 80
+  load_balancer_health_check_path: /healthcheck

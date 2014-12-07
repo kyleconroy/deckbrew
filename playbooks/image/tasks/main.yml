@@ -1,0 +1,26 @@
+- name: "Add the NGINX stable PPA"
+  apt_repository: repo='ppa:nginx/stable'
+
+- name: "Install NGINX"
+  apt: name=nginx
+
+- name: "Add the image proxy NGINX configuration"
+  copy: >
+    src=image-proxy.conf
+    dest=/etc/nginx/sites-available/image-proxy
+
+- name: "Delete the default configuration"
+  file: >
+    dest=/etc/nginx/sites-enabled/default 
+    state=absent
+
+- name: "Enable the image proxt configuration"
+  file: >
+    src=/etc/nginx/sites-available/image-proxy
+    dest=/etc/nginx/sites-enabled/image-proxy 
+    state=link
+
+- name: "Run NGINX"
+  service: >
+    name=nginx 
+    state=restarted

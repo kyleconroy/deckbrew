@@ -1,0 +1,6 @@
+- name: Provision image instance
+  hosts: all
+  sudo: yes
+  gather_facts: false
+  roles:
+    - image

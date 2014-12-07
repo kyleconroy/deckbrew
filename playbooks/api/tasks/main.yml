@@ -1,0 +1,90 @@
+- name: "Configure Varnish defaults"
+  copy:
+    src: default.vcl
+    dest: /etc/varnish/default.vcl
+
+- name: "Configure API caching"
+  copy:
+    src: deckbrew-cache.conf
+    dest: /etc/default/varnish
+
+- name: "Configure PostgreSQL"
+  copy:
+    src: postgres.conf
+    dest: /etc/postgresql/9.3/main/postgresql.conf
+  notify:
+    - restart postgresql
+
+- file:
+   path: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats
+   state: directory
+   recurse: true
+   owner: root
+
+- command: chmod -R 777 /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/
+
+- name: "Copy the Deckbrew API binary"
+  copy:
+    src: brewapi-linux
+    dest: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/brewapi
+    mode: 777
+
+- copy: src=commander.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats/
+- copy: src=vintage.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats/
+- copy: src=modern.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats
+- copy: src=standard.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats/
+- copy: src=legacy.json dest=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/formats/
+
+- name: "Create the database"
+  sudo_user: postgres
+  postgresql_db:
+    name: deckbrew
+    encoding: UTF-8
+    template: template0
+    lc_collate: en_US.UTF-8
+    lc_ctype: en_US.UTF-8
+
+- user:
+    name: brewmaster
+    system: yes
+
+- postgresql_user: "name=brewmaster password={{db_password}} role_attr_flags=SUPERUSER"
+  sudo_user: postgres
+
+- name: "Migrate database"
+  command: >
+    ./brewapi migrate 
+    chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+  environment: go
+  sudo_user: postgres
+
+- postgresql_user: "name=brewmaster password={{db_password}} role_attr_flags=NOSUPERUSER"
+  sudo_user: postgres
+
+- name: Download card file
+  get_url:
+    dest: /usr/local/gopath/src/github.com/kyleconroy/deckbrew-api/AllSets-x.json.zip
+    url: http://mtgjson.com/json/AllSets-x.json.zip
+    mode: 777
+
+- name: Unpack cards
+  command:
+    unzip AllSets-x.json.zip
+    creates=AllSets-x.json
+    chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+
+- command: >
+    ./brewapi load
+    chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+  environment: go
+  sudo_user: postgres
+
+- command: ./brewapi price chdir=/usr/local/gopath/src/github.com/kyleconroy/deckbrew-api
+  environment: go
+  sudo_user: postgres
+
+- template:
+    src: deckapi.conf.j2
+    dest: /etc/init/deckapi.conf
+- service: name=deckapi state=restarted
+- service: name=varnish state=restarted

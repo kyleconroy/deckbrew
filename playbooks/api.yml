@@ -1,0 +1,6 @@
+- name: Provision API instance
+  hosts: all
+  sudo: yes
+  gather_facts: false
+  roles:
+    - api
