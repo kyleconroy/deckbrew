@@ -98,8 +98,8 @@ m.Get("/", func() (int, string) {
 })
 ~~~
 
-#### 服务的注入 
-处理器是通过反射来调用的. Martini 通过*Dependency Injection* *（依赖注入）* 来为处理器注入参数列表. **这样使得Martini与Go语言的`http.HandlerFunc`接口完全兼容.** 
+#### 服务的注入
+处理器是通过反射来调用的. Martini 通过*Dependency Injection* *（依赖注入）* 来为处理器注入参数列表. **这样使得Martini与Go语言的`http.HandlerFunc`接口完全兼容.**
 
 如果你加入一个参数到你的处理器, Martini将会搜索它参数列表中的服务，并且通过类型判断来解决依赖关系:
 ~~~ go
@@ -246,7 +246,7 @@ m.Use(func(c martini.Context, log *log.Logger){
   log.Println("before a request")
 
   c.Next()
-  
+
   log.Println("after a request")
 })
 ~~~
@@ -292,12 +292,12 @@ func init() {
 ### 我如何修改port/host?
 
 Martini的`Run`函数会检查PORT和HOST的环境变量并使用它们. 否则Martini将会默认使用localhost:3000
-如果想要自定义PORT和HOST, 使用`http.ListenAndServe`函数来代替.
+如果想要自定义PORT和HOST, 使用`martini.RunOnAddr`函数来代替.
 
 ~~~ go
   m := martini.Classic()
   // ...
-  http.ListenAndServe(":8080", m)
+  m.RunOnAddr(":8080")
 ~~~
 
 ## 贡献

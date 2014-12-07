@@ -13,8 +13,12 @@
 		},
 		{
 			"ImportPath": "github.com/go-martini/martini",
-			"Comment": "v1.0-rc1-18-g37d6716",
-			"Rev": "37d6716c45efb172cd7074a6f29de02945f17353"
+			"Comment": "v1.0-73-g8eda3a6",
+			"Rev": "8eda3a62a2d3a84c8d0bd82c0a6e884f872b68b4"
+		},
+		{
+			"ImportPath": "github.com/kyleconroy/migrator",
+			"Rev": "2ce60bf29dfa58c507cfd86c30c185090687952f"
 		},
 		{
 			"ImportPath": "github.com/lib/pq",

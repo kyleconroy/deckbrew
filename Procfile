@@ -1,0 +1,1 @@
+web: ./deckbrew-api serve

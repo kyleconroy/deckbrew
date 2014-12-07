@@ -374,6 +374,11 @@ func ServeWebsite() error {
 	m := NewApi()
 	m.Map(db)
 	m.Map(&pricelist)
-	m.Run()
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	m.RunOnAddr(":" + port)
 	return nil
 }
