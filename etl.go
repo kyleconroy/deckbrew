@@ -187,31 +187,50 @@ func AddFormat(c *Card, f *MTGFormat) {
 	}
 }
 
-// FIXME: Add Sets
-func CreateCollection(db *sql.DB, collection MTGCollection) error {
-	var id string
-	err := db.QueryRow("SELECT id FROM sets LIMIT 1").Scan(&id)
-	switch {
-	case err == sql.ErrNoRows:
-		log.Println("no sets, starting load")
-	case err != nil:
-		return err
-	default:
-		log.Println("sets exist, skipping load")
-		return nil
+func existingSet(sets []Set, id string) bool {
+	for _, cs := range sets {
+		if cs.Id == id {
+			return true
+		}
 	}
+	return false
+}
 
+func existingCard(ids []string, id string) bool {
+	for _, i := range ids {
+		if i == id {
+			return true
+		}
+	}
+	return false
+}
+
+func CreateCollection(db *sql.DB, collection MTGCollection) error {
 	formats, err := LoadFormats()
 	if err != nil {
 		return err
 	}
 	sets, cards := TransformCollection(collection, formats)
 
+	// Load the current cards and sets
+	currentSets, err := FetchSets(db)
+	if err != nil {
+		return err
+	}
+
+	currentCards, err := FetchCardIDs(db)
+	if err != nil {
+		return err
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 	for _, s := range sets {
+		if existingSet(currentSets, s.Id) {
+			continue
+		}
 		_, err := tx.Exec("INSERT INTO sets (id, name, border, type) VALUES ($1, $2, $3, $4)",
 			s.Id, s.Name, s.Border, s.Type)
 		if err != nil {
@@ -219,8 +238,14 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 			return err
 		}
 	}
+
+	// TODO: The code below won't handle reprints, as we won't update the card record
+	// when it's been printed in a new set. Figure this out some how
 	i := 0
 	for _, c := range cards {
+		if existingCard(currentCards, c.Id) {
+			continue
+		}
 		if i >= 1000 {
 			log.Println("Added 1000 cards to the database")
 		}
@@ -311,19 +336,19 @@ func DownloadCards(url, path string) error {
 	return nil
 }
 
-func SyncDatabase() error {
+func SyncCards() error {
+	db, err := getDatabase()
+	if err != nil {
+		return err
+	}
 	path := "cards.json"
 	log.Println("downloading cards from mtgjson.com")
-	err := DownloadCards("http://mtgjson.com/json/AllSets-x.json.zip", path)
+	err = DownloadCards("http://mtgjson.com/json/AllSets-x.json.zip", path)
 	if err != nil {
 		return err
 	}
 	log.Println("loading cards into database")
 	collection, err := LoadCollection(path)
-	if err != nil {
-		return err
-	}
-	db, err := getDatabase()
 	if err != nil {
 		return err
 	}

@@ -80,9 +80,5 @@ func LoadCollection(path string) (MTGCollection, error) {
 
 	var collection MTGCollection
 	err = json.Unmarshal(blob, &collection)
-
-	if err != nil {
-		return MTGCollection{}, err
-	}
-	return collection, nil
+	return collection, err
 }

@@ -1,5 +1,3 @@
 cards.json
-prices.json
-/deckbrew
-brewapi
-.vagrant
+deckbrew-api
+env.sh

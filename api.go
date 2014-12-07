@@ -331,7 +331,6 @@ func NewApi() *martini.Martini {
 
 	r := martini.NewRouter()
 
-	r.Get("/ping", Ping)
 	r.Get("/mtg/cards", HandleCards)
 	r.Get("/mtg/cards/typeahead", HandleTypeahead)
 	r.Get("/mtg/cards/random", HandleRandomCard)
@@ -365,14 +364,12 @@ func ServeWebsite() error {
 	if err != nil {
 		return err
 	}
-	prices, err := loadCachedPrices(db)
+	prices, err := FetchPrices(db)
 	if err != nil {
 		return err
 	}
 	pricelist := PriceList{}
 	pricelist.Prices = prices
-
-	go updatePrices(db, &pricelist)
 
 	m := NewApi()
 	m.Map(db)

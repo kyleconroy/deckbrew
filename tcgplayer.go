@@ -2,14 +2,11 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -139,6 +136,8 @@ func TCGSet(setId, set string) string {
 		return "Planechase 2012"
 	case "C13":
 		return "Commander 2013"
+	case "C14":
+		return "Commander 2014"
 	case "PD2":
 		return "Premium Deck Series: Fire and Lightning"
 	case "LEB":
@@ -356,33 +355,39 @@ func loadPrices(db *sql.DB) (map[string]Price, error) {
 	return fetchPrices(db, sets), nil
 }
 
-func loadCachedPrices(db *sql.DB) (map[string]Price, error) {
-	if _, err := os.Stat("prices.json"); err == nil {
-		blob, err := ioutil.ReadFile("prices.json")
-		prices := map[string]Price{}
-		err = json.Unmarshal(blob, &prices)
-		return prices, err
-	}
+func insertPrices(db *sql.DB, older, newer map[string]Price) error {
+	for id, newPrice := range newer {
+		// Skip if the price hasn't changed
+		if true &&
+			older[id].Low == newPrice.Low &&
+			older[id].Average == newPrice.Average &&
+			older[id].High == newPrice.High {
+			continue
+		}
 
-	prices, err := loadPrices(db)
-	if err != nil {
-		return prices, err
+		err := InsertPrice(db, id, newPrice)
+		if err != nil {
+			return err
+		}
 	}
-
-	blob, err := json.Marshal(prices)
-	if err != nil {
-		return prices, err
-	}
-
-	err = ioutil.WriteFile("prices.json", blob, 0644)
-	return prices, err
+	return nil
 }
 
-func GeneratePrices() error {
+func SyncPrices() error {
 	db, err := getDatabase()
 	if err != nil {
 		return err
 	}
-	_, err = loadCachedPrices(db)
-	return err
+
+	savedPrices, err := FetchPrices(db)
+	if err != nil {
+		return err
+	}
+
+	prices, err := loadPrices(db)
+	if err != nil {
+		return err
+	}
+
+	return insertPrices(db, savedPrices, prices)
 }

@@ -4,17 +4,19 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	_ "github.com/lib/pq"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/kyleconroy/migrator"
+	_ "github.com/lib/pq"
 )
 
 func getDatabase() (*sql.DB, error) {
-	url := os.Getenv("DECKBREW_DATABASE")
+	url := os.Getenv("DATABASE_URL")
 
 	if url == "" {
-		return nil, fmt.Errorf("connection requires DECKBREW_DATABASE environment variable")
+		return nil, fmt.Errorf("connection requires DATABASE_URL environment variable")
 	}
 
 	db, err := sql.Open("postgres", url)
@@ -135,6 +137,25 @@ func FetchCards(db *sql.DB, cond Condition, page int) ([]Card, error) {
 	return scanCards(rows)
 }
 
+func FetchCardIDs(db *sql.DB) ([]string, error) {
+	ids := []string{}
+
+	rows, err := db.Query("SELECT id FROM cards")
+	if err != nil {
+		return ids, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return ids, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func FetchCard(db *sql.DB, id string) (Card, error) {
 	var blob []byte
 	var card Card
@@ -146,4 +167,45 @@ func FetchCard(db *sql.DB, id string) (Card, error) {
 		return card, err
 	}
 	return card, json.Unmarshal(blob, &card)
+}
+
+func FetchPrices(db *sql.DB) (map[string]Price, error) {
+	prices := map[string]Price{}
+
+	rows, err := db.Query(`
+    SELECT DISTINCT ON (multiverse_id) multiverse_id, low, high, median
+    FROM prices
+    ORDER BY multiverse_id, created DESC
+    `)
+
+	if err != nil {
+		return prices, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var price Price
+		if err := rows.Scan(&id, &price.Low, &price.High, &price.Average); err != nil {
+			return prices, err
+		}
+		prices[id] = price
+	}
+	return prices, rows.Err()
+}
+
+func InsertPrice(db *sql.DB, id string, price Price) error {
+	_, err := db.Exec(`
+    INSERT INTO prices (multiverse_id, low, high, median)
+    VALUES ($1, $2, $3, $4)
+    `, id, price.Low, price.High, price.Average)
+	return err
+}
+
+func MigrateDatabase() error {
+	db, err := getDatabase()
+	if err != nil {
+		return err
+	}
+	return migrator.Run(db, "migrations")
 }
