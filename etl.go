@@ -1,12 +1,19 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"database/sql"
 	"encoding/json"
-	_ "github.com/lib/pq"
+	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"os"
 	"sort"
 	"strings"
+
+	_ "github.com/lib/pq"
 )
 
 func CreateStringArray(values []string) string {
@@ -343,4 +350,9 @@ func SyncCards() error {
 	}
 	log.Println("loading cards into database")
 	collection, err := LoadCollection(path)
+	if err != nil {
+		return err
+	}
+
+	return CreateCollection(db, collection)
 }

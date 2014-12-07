@@ -1,7 +1,0 @@
-- name: Provision vagrant vm
-  hosts: all
-  sudo: yes
-  gather_facts: false
-  roles:
-    - base
-    - image

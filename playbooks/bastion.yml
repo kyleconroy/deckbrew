@@ -1,6 +1,0 @@
-- name: Provision bastion instance
-  hosts: all
-  sudo: yes
-  gather_facts: false
-  roles:
-    - bastion

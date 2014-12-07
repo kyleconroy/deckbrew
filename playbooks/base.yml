@@ -1,6 +1,0 @@
-- name: Provision base instance
-  hosts: all
-  sudo: yes
-  gather_facts: false
-  roles:
-    - base
