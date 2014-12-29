@@ -26,5 +26,6 @@ func main() {
 	AddCommand(rootCmd, "serve", "Start and serve the REST API", ServeWebsite)
 	AddCommand(rootCmd, "sync", "Add new cards to the card database", SyncCards)
 	AddCommand(rootCmd, "price", "Sync price data to the database", SyncPrices)
+	AddCommand(rootCmd, "validate", "Validate price data", ValidatePrices)
 	rootCmd.Execute()
 }

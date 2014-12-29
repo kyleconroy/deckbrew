@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,7 +54,7 @@ func TCGCardURL(c *Card) string {
 
 func TCGEditionURL(c *Card, e *Edition) string {
 	set := TCGSlug(TCGSet(e.SetId, e.Set))
-	id := TCGSlug(TCGName(c.Name))
+	id := TCGSlug(TCGName(c.Name, e.MultiverseId))
 	return fmt.Sprintf("http://store.tcgplayer.com/magic/%s/%s?partner=DECKBREW", set, id)
 }
 
@@ -84,19 +87,71 @@ func (pl *PriceList) GetPrice(mid int) *Price {
 	}
 }
 
-func TCGName(name string) string {
-	id := 0
+func NormalizeName(name string) string {
+	return strings.ToLower(ReplaceUnicode(strings.TrimSpace(name)))
+}
+
+func TCGName(name string, id int) string {
+	translation := TranslateID(id)
+	if translation != "" {
+		return NormalizeName(translation)
+	} else {
+		return NormalizeName(name)
+	}
+}
+
+func TranslateID(id int) string {
 	switch id {
-	case 9844:
-		return "B.F.M. (Big Furry Monster Right)"
-	case 9780:
-		return "B.F.M. (Big Furry Monster Left)"
-	case 74237:
-		return "Our Market Research..."
+	case 1071:
+		return "Mishra's Factory (Fall)"
+	case 1072:
+		return "Mishra's Factory (Spring)"
+	case 1073:
+		return "Mishra's Factory (Summer)"
+	case 1074:
+		return "Mishra's Factory (Winter)"
+	case 1076:
+		return "Strip Mine (Even Horizon)"
+	case 1077:
+		return "Strip Mine (Uneven Horizon)"
+	case 1078:
+		return "Strip Mine (No Horizon)"
+	case 1079:
+		return "Strip Mine (Tower)"
+	case 1080:
+		return "Urza's Mine (Clawed Sphere)"
+	case 1081:
+		return "Urza's Mine (Mouth)"
+	case 1082:
+		return "Urza's Mine (Pulley)"
+	case 1083:
+		return "Urza's Mine (Tower)"
+	case 1084:
+		return "Urza's Power Plant (Bug)"
+	case 1085:
+		return "Urza's Power Plant (Columns)"
+	case 1086:
+		return "Urza's Power Plant (Sphere)"
+	case 1087:
+		return "Urza's Power Plant (Rock in Pot)"
+	case 1088:
+		return "Urza's Tower (Forest)"
+	case 1089:
+		return "Urza's Tower (Mountains)"
+	case 1090:
+		return "Urza's Tower (Plains)"
+	case 1091:
+		return "Urza's Tower (Shore)"
 	case 9757:
 		return "The Ultimate Nightmare of Wizards of the Coast Cu"
+	case 9780:
+		return "B.F.M. (Big Furry Monster Left)"
+	case 9844:
+		return "B.F.M. (Big Furry Monster Right)"
+	case 74237:
+		return "Our Market Research..."
 	default:
-		return strings.ToLower(ReplaceUnicode(name))
+		return ""
 	}
 }
 
@@ -159,29 +214,14 @@ func TCGSet(setId, set string) string {
 	}
 }
 
-func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
+func ScrapePrices(db *sql.DB, set Set) (map[string]Price, error) {
 	finalPrices := map[string]Price{}
 
-	if strings.HasPrefix(setId, "p") {
-		return finalPrices, fmt.Errorf("TCGPLayer doesn't support promo prices")
+	if !set.Priced {
+		return finalPrices, fmt.Errorf("set %s isn't priced", set.Name)
 	}
 
-	skip := map[string]bool{
-		"MED": true,
-		"ME2": true,
-		"ME3": true,
-		"ME4": true,
-		"PPR": true,
-		"VMA": true,
-		"RQS": true,
-		"ITP": true,
-	}
-
-	if skip[setId] {
-		return finalPrices, fmt.Errorf("TCGPlayer doesn't support sets %s", setName)
-	}
-
-	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(setName)
+	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(set.PriceGuide)
 	resp, err := http.Get(u)
 
 	if err != nil {
@@ -194,7 +234,13 @@ func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 		return finalPrices, err
 	}
 
-	rows, err := db.Query("SELECT record FROM cards WHERE sets @> $1", strings.ToLower("{"+setId+"}"))
+	return associatePrices(db, set, prices)
+}
+
+func associatePrices(db *sql.DB, set Set, prices map[string]Price) (map[string]Price, error) {
+	finalPrices := map[string]Price{}
+
+	rows, err := db.Query("SELECT record FROM cards WHERE sets @> $1", strings.ToLower("{"+set.Id+"}"))
 
 	if err != nil {
 		return finalPrices, err
@@ -209,6 +255,7 @@ func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 	if len(cards) == 0 {
 		return finalPrices, fmt.Errorf("No cards in set")
 	}
+
 	for _, c := range cards {
 
 		// Skip basic lands
@@ -220,7 +267,7 @@ func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 		found := false
 
 		for _, edition := range c.Editions {
-			if edition.SetId == setId {
+			if edition.SetId == set.Id {
 				e = edition
 				found = true
 			}
@@ -244,14 +291,16 @@ func ScrapePrices(db *sql.DB, setId, setName string) (map[string]Price, error) {
 			continue
 		}
 
-		if _, ok := prices[TCGName(c.Name)]; !ok {
+		tcgname := TCGName(c.Name, e.MultiverseId)
+
+		if _, ok := prices[tcgname]; !ok {
 			if e.Layout != "vanguard" {
-				log.Println("NOT FOUND", e.SetId, setName, c.Name)
+				log.Println("NOT FOUND", e.SetId, set.Name, c.Name)
 			}
 			continue
 		}
 
-		finalPrices[strconv.Itoa(e.MultiverseId)] = prices[TCGName(c.Name)]
+		finalPrices[strconv.Itoa(e.MultiverseId)] = prices[tcgname]
 	}
 
 	return finalPrices, nil
@@ -290,16 +339,21 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 			return results, fmt.Errorf("A proper pricing table has 8 cells")
 		}
 
-		name := strings.ToLower(ReplaceUnicode(strings.TrimSpace(Flatten(tds[0]))))
+		name := NormalizeName(Flatten(tds[0]))
+
+		if strings.HasPrefix(name, "dand") {
+			log.Println(name)
+		}
+
 		h := parseMoney(Flatten(tds[5]))
 		a := parseMoney(Flatten(tds[6]))
 		l := parseMoney(Flatten(tds[7]))
 
 		// Handle split cards
 		if strings.Contains(name, "//") {
-			names := strings.Split(name, "//")
-			results[strings.TrimSpace(names[0])] = Price{High: h, Average: a, Low: l}
-			results[strings.TrimSpace(names[1])] = Price{High: h, Average: a, Low: l}
+			for _, part := range strings.Split(name, "//") {
+				results[strings.TrimSpace(part)] = Price{High: h, Average: a, Low: l}
+			}
 		} else {
 			results[name] = Price{High: h, Average: a, Low: l}
 		}
@@ -319,20 +373,23 @@ func fetchPrices(db *sql.DB, sets []Set) map[string]Price {
 	pipeline := make(chan scrapeResult, 100)
 
 	for _, set := range sets {
+		if !set.Priced {
+			continue
+		}
 		wg.Add(1)
-		go func(set, name string) {
+		go func(s Set) {
 			defer wg.Done()
-			p, e := ScrapePrices(db, set, name)
+			p, e := ScrapePrices(db, s)
 
 			if e != nil {
 				log.Println(e)
 				return
 			}
 
-			for id, price := range p {
-				pipeline <- scrapeResult{ID: id, Price: price}
+			for _, price := range p {
+				pipeline <- scrapeResult{ID: s.Id, Price: price}
 			}
-		}(set.Id, TCGSet(set.Id, set.Name))
+		}(set)
 	}
 
 	go func() {
@@ -390,4 +447,61 @@ func SyncPrices() error {
 	}
 
 	return insertPrices(db, savedPrices, prices)
+}
+
+func savePriceGuide(s Set) error {
+	guide := filepath.Join("prices", strings.Replace(s.PriceGuide, "/", "", -1)+".html")
+	if _, err := os.Stat(guide); err == nil {
+		return nil
+	}
+	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(s.PriceGuide)
+	log.Printf("saving prices set=%s\n", s.Id)
+	resp, err := http.Get(u)
+
+	if err != nil {
+		return err
+	}
+
+	blob, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(guide, blob, 0777)
+}
+
+func ValidatePrices() error {
+	db, err := getDatabase()
+	if err != nil {
+		return err
+	}
+	sets, err := FetchSets(db)
+	if err != nil {
+		return err
+	}
+	for _, set := range sets {
+		if !set.Priced {
+			continue
+		}
+
+		if err := savePriceGuide(set); err != nil {
+			return err
+		}
+
+		guide := filepath.Join("prices", strings.Replace(set.PriceGuide, "/", "", -1)+".html")
+		file, err := os.Open(guide)
+		if err != nil {
+			return err
+		}
+
+		prices, err := ParsePriceGuide(file)
+		if err != nil {
+			return err
+		}
+		_, err = associatePrices(db, set, prices)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

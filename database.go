@@ -36,14 +36,14 @@ func FetchSet(db *sql.DB, id string) (Set, error) {
 
 func FetchSets(db *sql.DB) ([]Set, error) {
 	sets := []Set{}
-	rows, err := db.Query("SELECT id,name,border,type FROM sets ORDER BY name")
+	rows, err := db.Query("SELECT id,name,border,type,price_guide,priced FROM sets ORDER BY name")
 	if err != nil {
 		return sets, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var set Set
-		if err := rows.Scan(&set.Id, &set.Name, &set.Border, &set.Type); err != nil {
+		if err := rows.Scan(&set.Id, &set.Name, &set.Border, &set.Type, &set.PriceGuide, &set.Priced); err != nil {
 			return sets, err
 		}
 		set.Fill()

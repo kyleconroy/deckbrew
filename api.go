@@ -155,12 +155,14 @@ type Price struct {
 }
 
 type Set struct {
-	Id       string `json:"id"`
-	Name     string `json:"name"`
-	Border   string `json:"border"`
-	Type     string `json:"type"`
-	Href     string `json:"url"`
-	CardsUrl string `json:"cards_url"`
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	Border     string `json:"border"`
+	Type       string `json:"type"`
+	Href       string `json:"url"`
+	CardsUrl   string `json:"cards_url"`
+	PriceGuide string `json:"-"`
+	Priced     bool   `json:"-"`
 }
 
 func (s *Set) Fill() {
