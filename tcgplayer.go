@@ -100,118 +100,13 @@ func TCGName(name string, id int) string {
 	}
 }
 
-func TranslateID(id int) string {
-	switch id {
-	case 1071:
-		return "Mishra's Factory (Fall)"
-	case 1072:
-		return "Mishra's Factory (Spring)"
-	case 1073:
-		return "Mishra's Factory (Summer)"
-	case 1074:
-		return "Mishra's Factory (Winter)"
-	case 1076:
-		return "Strip Mine (Even Horizon)"
-	case 1077:
-		return "Strip Mine (Uneven Horizon)"
-	case 1078:
-		return "Strip Mine (No Horizon)"
-	case 1079:
-		return "Strip Mine (Tower)"
-	case 1080:
-		return "Urza's Mine (Clawed Sphere)"
-	case 1081:
-		return "Urza's Mine (Mouth)"
-	case 1082:
-		return "Urza's Mine (Pulley)"
-	case 1083:
-		return "Urza's Mine (Tower)"
-	case 1084:
-		return "Urza's Power Plant (Bug)"
-	case 1085:
-		return "Urza's Power Plant (Columns)"
-	case 1086:
-		return "Urza's Power Plant (Sphere)"
-	case 1087:
-		return "Urza's Power Plant (Rock in Pot)"
-	case 1088:
-		return "Urza's Tower (Forest)"
-	case 1089:
-		return "Urza's Tower (Mountains)"
-	case 1090:
-		return "Urza's Tower (Plains)"
-	case 1091:
-		return "Urza's Tower (Shore)"
-	case 9757:
-		return "The Ultimate Nightmare of Wizards of the Coast Cu"
-	case 9780:
-		return "B.F.M. (Big Furry Monster Left)"
-	case 9844:
-		return "B.F.M. (Big Furry Monster Right)"
-	case 74237:
-		return "Our Market Research..."
-	default:
-		return ""
+func loadPriceGuide(setName string) (map[string]Price, error) {
+	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(setName)
+	resp, err := http.Get(u)
+	if err != nil {
+		return map[string]Price{}, err
 	}
-}
-
-func TCGSet(setId, set string) string {
-	switch setId {
-	case "10E":
-		return "10th Edition"
-	case "9ED":
-		return "9th Edition"
-	case "8ED":
-		return "8th Edition"
-	case "7ED":
-		return "7th Edition"
-	case "M15":
-		return "Magic 2015 (M15)"
-	case "M14":
-		return "Magic 2014 (M14)"
-	case "M13":
-		return "Magic 2013 (M13)"
-	case "M12":
-		return "Magic 2012 (M12)"
-	case "M11":
-		return "Magic 2011 (M11)"
-	case "M10":
-		return "Magic 2010 (M10)"
-	case "CMD":
-		return "Commander"
-	case "HHO":
-		return "Special Occasion"
-	case "RAV":
-		return "Ravnica"
-	case "DDG":
-		return "Duel Decks: Knights vs Dragons"
-	case "DDL":
-		return "Duel Decks: Heroes vs. Monsters"
-	case "PC2":
-		return "Planechase 2012"
-	case "C13":
-		return "Commander 2013"
-	case "C14":
-		return "Commander 2014"
-	case "PD2":
-		return "Premium Deck Series: Fire and Lightning"
-	case "LEB":
-		return "Beta Edition"
-	case "LEA":
-		return "Alpha Edition"
-	case "TSB":
-		return "Timeshifted"
-	case "MD1":
-		return "Magic Modern Event Deck"
-	case "CNS":
-		return "Conspiracy"
-	case "DKM":
-		return "Deckmasters Garfield vs. Finkel"
-	case "KTK":
-		return "Khans of Tarkir"
-	default:
-		return set
-	}
+	return ParsePriceGuide(resp.Body)
 }
 
 func ScrapePrices(db *sql.DB, set Set) (map[string]Price, error) {
@@ -221,17 +116,21 @@ func ScrapePrices(db *sql.DB, set Set) (map[string]Price, error) {
 		return finalPrices, fmt.Errorf("set %s isn't priced", set.Name)
 	}
 
-	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(set.PriceGuide)
-	resp, err := http.Get(u)
-
+	prices, err := loadPriceGuide(set.PriceGuide)
 	if err != nil {
-		return finalPrices, err
+		return prices, err
 	}
 
-	prices, err := ParsePriceGuide(resp.Body)
-
-	if err != nil {
-		return finalPrices, err
+	// TCGPLayer is really stupid, and has two lists for each duel deck. To fix this,
+	// we try to load both deck names.
+	if strings.Contains(set.PriceGuide, " vs. ") {
+		more, err := loadPriceGuide(strings.Replace(set.PriceGuide, " vs. ", " vs ", 1))
+		if err != nil {
+			return more, err
+		}
+		for k, v := range more {
+			prices[k] = v
+		}
 	}
 
 	return associatePrices(db, set, prices)
@@ -295,7 +194,7 @@ func associatePrices(db *sql.DB, set Set, prices map[string]Price) (map[string]P
 
 		if _, ok := prices[tcgname]; !ok {
 			if e.Layout != "vanguard" {
-				log.Println("NOT FOUND", e.SetId, set.Name, c.Name)
+				log.Println("NOT FOUND", e.SetId, set.Name, strconv.QuoteToASCII(c.Name))
 			}
 			continue
 		}
@@ -342,7 +241,7 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 		name := NormalizeName(Flatten(tds[0]))
 
 		if strings.HasPrefix(name, "dand") {
-			log.Println(name)
+			log.Println(strconv.QuoteToASCII(name))
 		}
 
 		h := parseMoney(Flatten(tds[5]))
@@ -352,6 +251,10 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 		// Handle split cards
 		if strings.Contains(name, "//") {
 			for _, part := range strings.Split(name, "//") {
+				results[strings.TrimSpace(part)] = Price{High: h, Average: a, Low: l}
+			}
+		} else if strings.Contains(name, "/") {
+			for _, part := range strings.Split(name, "/") {
 				results[strings.TrimSpace(part)] = Price{High: h, Average: a, Low: l}
 			}
 		} else {
@@ -449,13 +352,13 @@ func SyncPrices() error {
 	return insertPrices(db, savedPrices, prices)
 }
 
-func savePriceGuide(s Set) error {
-	guide := filepath.Join("prices", strings.Replace(s.PriceGuide, "/", "", -1)+".html")
+func savePriceGuide(id, name string) error {
+	guide := filepath.Join("prices", strings.Replace(name, "/", "", -1)+".html")
 	if _, err := os.Stat(guide); err == nil {
 		return nil
 	}
-	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(s.PriceGuide)
-	log.Printf("saving prices set=%s\n", s.Id)
+	u := "http://magic.tcgplayer.com/db/price_guide.asp?setname=" + url.QueryEscape(name)
+	log.Printf("saving prices set=%s\n", id)
 	resp, err := http.Get(u)
 
 	if err != nil {
@@ -484,7 +387,7 @@ func ValidatePrices() error {
 			continue
 		}
 
-		if err := savePriceGuide(set); err != nil {
+		if err := savePriceGuide(set.Id, set.PriceGuide); err != nil {
 			return err
 		}
 
@@ -498,6 +401,31 @@ func ValidatePrices() error {
 		if err != nil {
 			return err
 		}
+
+		// TCGPLayer is really stupid, and has two lists for each duel deck. To fix this,
+		// we try to load both deck names.
+		if strings.Contains(set.PriceGuide, " vs. ") {
+			name := strings.Replace(set.PriceGuide, " vs. ", " vs ", 1)
+
+			if err := savePriceGuide(set.Id, name); err != nil {
+				return err
+			}
+
+			guide := filepath.Join("prices", strings.Replace(name, "/", "", -1)+".html")
+			file, err := os.Open(guide)
+			if err != nil {
+				return err
+			}
+
+			more, err := ParsePriceGuide(file)
+			if err != nil {
+				return err
+			}
+			for k, v := range more {
+				prices[k] = v
+			}
+		}
+
 		_, err = associatePrices(db, set, prices)
 		if err != nil {
 			return err

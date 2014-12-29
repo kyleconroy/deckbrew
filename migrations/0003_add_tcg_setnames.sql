@@ -3,7 +3,7 @@ ALTER TABLE sets ADD COLUMN price_guide VARCHAR(100) DEFAULT '';
 UPDATE sets SET price_guide = '10th Edition' WHERE id = '10E';   
 UPDATE sets SET price_guide = 'Unlimited Edition' WHERE id = '2ED';
 UPDATE sets SET price_guide = 'Revised Edition' WHERE id = '3ED';
-UPDATE sets SET price_guide = 'Fouth Edition' WHERE id = '4ED';
+UPDATE sets SET price_guide = 'Fourth Edition' WHERE id = '4ED';
 UPDATE sets SET price_guide = 'Fifth Dawn' WHERE id = '5DN';
 UPDATE sets SET price_guide = 'Fifth Edition' WHERE id = '5ED';
 UPDATE sets SET price_guide = 'Classic Sixth Edition' WHERE id = '6ED';
@@ -105,7 +105,7 @@ UPDATE sets SET price_guide = 'Portal' WHERE id = 'POR';
 UPDATE sets SET price_guide = 'Portal Three Kingdoms' WHERE id = 'PTK';
 UPDATE sets SET price_guide = 'Ravnica' WHERE id = 'RAV';
 UPDATE sets SET price_guide = 'Rise of the Eldrazi' WHERE id = 'ROE';
-UPDATE sets SET price_guide = 'Fouth Edition' WHERE id = 'RQS';
+UPDATE sets SET price_guide = 'Fourth Edition' WHERE id = 'RQS';
 UPDATE sets SET price_guide = 'Return to Ravnica' WHERE id = 'RTR';
 UPDATE sets SET price_guide = 'Starter 2000' WHERE id = 'S00';
 UPDATE sets SET price_guide = 'Starter 1999' WHERE id = 'S99';
@@ -174,4 +174,3 @@ UPDATE sets SET priced = false WHERE id = 'ME4'; -- online only
 UPDATE sets SET priced = false WHERE id = 'MGB';
 UPDATE sets SET priced = false WHERE id = 'VMA'; -- online only
 UPDATE sets SET priced = false WHERE id = 'pPOD';
-
