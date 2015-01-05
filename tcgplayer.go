@@ -194,7 +194,7 @@ func associatePrices(db *sql.DB, set Set, prices map[string]Price) (map[string]P
 
 		if _, ok := prices[tcgname]; !ok {
 			if e.Layout != "vanguard" {
-				log.Println("NOT FOUND", e.SetId, set.Name, strconv.QuoteToASCII(c.Name))
+				log.Println("NOT FOUND", e.SetId, e.MultiverseId, set.Name, strconv.QuoteToASCII(c.Name))
 			}
 			continue
 		}
@@ -239,11 +239,6 @@ func ParsePriceGuide(page io.Reader) (map[string]Price, error) {
 		}
 
 		name := NormalizeName(Flatten(tds[0]))
-
-		if strings.HasPrefix(name, "dand") {
-			log.Println(strconv.QuoteToASCII(name))
-		}
-
 		h := parseMoney(Flatten(tds[5]))
 		a := parseMoney(Flatten(tds[6]))
 		l := parseMoney(Flatten(tds[7]))

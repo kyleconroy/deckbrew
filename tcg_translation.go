@@ -42,6 +42,16 @@ func TranslateID(id int) string {
 		return "Urza's Tower (Plains)"
 	case 1091, 2899:
 		return "Urza's Tower (Shore)"
+	case 2969:
+		return "Hungry Mist [Version 1]"
+	case 2970:
+		return "Hungry Mist [Version 2]"
+	case 3021:
+		return "Mesa Falcon [Version 1]"
+	case 3022:
+		return "Mesa Falcon [Version 2]"
+	case 3207:
+		return "Reinforcements (Version 2)"
 	case 4979:
 		return "Pegasus Token"
 	case 5472:

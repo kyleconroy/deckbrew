@@ -324,12 +324,22 @@ func NotFound() (int, []byte) {
 	return JSON(http.StatusNotFound, Errors("No endpoint here"))
 }
 
+// Logger returns a middleware handler that logs the request as it goes in and the response as it goes out.
+func Logger() martini.Handler {
+	return func(res http.ResponseWriter, req *http.Request, c martini.Context, log *log.Logger) {
+		start := time.Now()
+		rw := res.(martini.ResponseWriter)
+		c.Next()
+		log.Printf("method=%s url=%s status=%v dt=%s\n", req.Method, req.URL.Path, rw.Status(), time.Since(start))
+	}
+}
+
 func NewApi() *martini.Martini {
 	m := martini.New()
 
 	// Setup middleware
 	m.Use(martini.Recovery())
-	m.Use(martini.Logger())
+	m.Use(Logger())
 	m.Use(gzip.All())
 	m.Use(func(w http.ResponseWriter, req *http.Request) {
 		if req.URL.Path != "/mtg/cards/random" {
