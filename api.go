@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-martini/martini"
@@ -115,7 +114,7 @@ func (c *Card) Multicolor() bool {
 	return len(c.Colors) > 1
 }
 
-func (c *Card) Fill(pl *PriceList) {
+func (c *Card) Fill() {
 	c.Href = ReverseCard(c.Id)
 	c.StoreUrl = TCGCardURL(c)
 
@@ -125,7 +124,11 @@ func (c *Card) Fill(pl *PriceList) {
 		e.SetUrl = ReverseSet(e.SetId)
 		e.ImageUrl = MTGImageURL(e.MultiverseId)
 		e.StoreUrl = TCGEditionURL(c, e)
-		e.Price = pl.GetPrice(e.MultiverseId)
+		e.Price = &Price{
+			Low:     0,
+			Average: 0,
+			High:    0,
+		}
 	}
 }
 
@@ -206,7 +209,7 @@ type ApiError struct {
 	Errors []string `json:"errors"`
 }
 
-func HandleCards(db *sql.DB, m *sync.RWMutex, pl *PriceList, req *http.Request, w http.ResponseWriter) (int, []byte) {
+func HandleCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []byte) {
 	cond, err, errors := ParseSearch(req.URL)
 	if err != nil {
 		log.Println(err)
@@ -223,11 +226,9 @@ func HandleCards(db *sql.DB, m *sync.RWMutex, pl *PriceList, req *http.Request, 
 		return JSON(http.StatusNotFound, Errors("Cards not found"))
 	}
 
-	m.RLock()
 	for i, _ := range cards {
-		cards[i].Fill(pl)
+		cards[i].Fill()
 	}
-	m.RUnlock()
 
 	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, page))
 	return JSON(http.StatusOK, cards)
@@ -248,16 +249,14 @@ func HandleRandomCard(db *sql.DB, w http.ResponseWriter, r *http.Request) (int, 
 	}
 }
 
-func HandleCard(db *sql.DB, m *sync.RWMutex, pl *PriceList, params martini.Params) (int, []byte) {
+func HandleCard(db *sql.DB, params martini.Params) (int, []byte) {
 	card, err := FetchCard(db, params["id"])
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors("Card not found"))
 	}
 
-	m.RLock()
-	card.Fill(pl)
-	m.RUnlock()
+	card.Fill()
 
 	return JSON(http.StatusOK, card)
 }
@@ -293,18 +292,16 @@ func HandleTerm(term string) func(*sql.DB) (int, []byte) {
 	}
 }
 
-func HandleTypeahead(db *sql.DB, m *sync.RWMutex, pl *PriceList, req *http.Request) (int, []byte) {
+func HandleTypeahead(db *sql.DB, req *http.Request) (int, []byte) {
 	cards, err := FetchTypeahead(db, req.URL.Query().Get("q"))
 	if err != nil {
 		log.Println(err)
 		return JSON(http.StatusNotFound, Errors(" Can't find any cards that match that search"))
 	}
 
-	m.RLock()
 	for i, _ := range cards {
-		cards[i].Fill(pl)
+		cards[i].Fill()
 	}
-	m.RUnlock()
 
 	return JSON(http.StatusOK, cards)
 }
@@ -372,42 +369,14 @@ func NewApi() *martini.Martini {
 	return m
 }
 
-func updatePrices(db *sql.DB, m *sync.RWMutex, pl *PriceList) {
-	for {
-		log.Println("Fetching new prices")
-		prices, err := FetchPrices(db)
-		if err != nil {
-			log.Println(err)
-		}
-
-		m.Lock()
-		pl.Prices = prices
-		m.Unlock()
-
-		time.Sleep(5 * time.Minute)
-	}
-}
-
 func ServeWebsite() error {
 	db, err := getDatabase()
 	if err != nil {
 		return err
 	}
-	prices, err := FetchPrices(db)
-	if err != nil {
-		return err
-	}
-	pricelist := PriceList{}
-	pricelist.Prices = prices
-
-	mutex := sync.RWMutex{}
 
 	m := NewApi()
 	m.Map(db)
-	m.Map(&pricelist)
-	m.Map(&mutex)
-
-	go updatePrices(db, &mutex, &pricelist)
 
 	port := os.Getenv("PORT")
 	if port == "" {
