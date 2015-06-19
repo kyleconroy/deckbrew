@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -236,7 +237,7 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 			s.Id, s.Name, s.Border, s.Type)
 		if err != nil {
 			tx.Rollback()
-			return err
+			return fmt.Errorf("error intserting set %+v %s", s, err)
 		}
 	}
 
@@ -271,7 +272,7 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 			CreateStringArray(c.MultiverseIds()))
 		if err != nil {
 			tx.Rollback()
-			return err
+			return fmt.Errorf("error intserting card %+v %s", c, err)
 		}
 		i += 1
 	}
