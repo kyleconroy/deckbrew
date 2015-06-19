@@ -13,7 +13,7 @@ func AddCommand(root *cobra.Command, name, desc string, run func() error) {
 		Run: func(cmd *cobra.Command, args []string) {
 			err := run()
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("command-error %s", err)
 			}
 		},
 	}
