@@ -245,9 +245,6 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 	// when it's been printed in a new set. Figure this out some how
 	i := 0
 	for _, c := range cards {
-		if existingCard(currentCards, c.Id) {
-			continue
-		}
 		if i >= 1000 {
 			log.Println("Added 1000 cards to the database")
 		}
@@ -262,17 +259,28 @@ func CreateCollection(db *sql.DB, collection MTGCollection) error {
 			"types", "subtypes", "supertypes", "colors", "sets",
 			"formats", "status", "mids",
 		}
-		q := Insert(columns, "cards")
-		_, err = tx.Exec(q, c.Id, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
-			c.Power, c.Toughness, c.Loyalty, c.Multicolor(),
-			CreateStringArray(c.Rarities()), CreateStringArray(c.Types),
-			CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes),
-			CreateStringArray(c.Colors), CreateStringArray(c.Sets()),
-			CreateStringArray(c.Formats()), CreateStringArray(c.Status()),
-			CreateStringArray(c.MultiverseIds()))
+		if existingCard(currentCards, c.Id) {
+			q := Update(columns[1:], "cards")
+			_, err = tx.Exec(q, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
+				c.Power, c.Toughness, c.Loyalty, c.Multicolor(),
+				CreateStringArray(c.Rarities()), CreateStringArray(c.Types),
+				CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes),
+				CreateStringArray(c.Colors), CreateStringArray(c.Sets()),
+				CreateStringArray(c.Formats()), CreateStringArray(c.Status()),
+				CreateStringArray(c.MultiverseIds()), c.Id)
+		} else {
+			q := Insert(columns, "cards")
+			_, err = tx.Exec(q, c.Id, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
+				c.Power, c.Toughness, c.Loyalty, c.Multicolor(),
+				CreateStringArray(c.Rarities()), CreateStringArray(c.Types),
+				CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes),
+				CreateStringArray(c.Colors), CreateStringArray(c.Sets()),
+				CreateStringArray(c.Formats()), CreateStringArray(c.Status()),
+				CreateStringArray(c.MultiverseIds()))
+		}
 		if err != nil {
 			tx.Rollback()
-			return fmt.Errorf("error intserting card %+v %s", c, err)
+			return fmt.Errorf("error inserting / updating card %+v %s", c, err)
 		}
 		i += 1
 	}
