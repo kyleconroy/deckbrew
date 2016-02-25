@@ -1,15 +1,21 @@
 {
 	"ImportPath": "github.com/kyleconroy/deckbrew-api",
-	"GoVersion": "go1.3",
+	"GoVersion": "go1.6",
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go.net/html",
 			"Comment": "null-110",
-			"Rev": "2b669bbfb7baae43e63e0cbe3ebb83c9f9ebb3e5"
+			"Rev": "'2b669bbfb7baae43e63e0cbe3ebb83c9f9ebb3e5'"
+		},
+		{
+			"ImportPath": "code.google.com/p/go.net/html/atom",
+			"Comment": "null-110",
+			"Rev": "'2b669bbfb7baae43e63e0cbe3ebb83c9f9ebb3e5'"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/inject",
-			"Rev": "346a984957aa24276ebc5e7b16b3ac6a50fe8138"
+			"Comment": "v1.0-rc1-4-g4b81725",
+			"Rev": "4b8172520a03fa190f427bbd284db01b459bfce7"
 		},
 		{
 			"ImportPath": "github.com/go-martini/martini",
@@ -22,7 +28,11 @@
 		},
 		{
 			"ImportPath": "github.com/lib/pq",
-			"Rev": "14b615cd107b21ba6d6b0fdcc04f6fd228604c5b"
+			"Rev": "b549d8792f245c2dcee7702ddcd844280b8ecb10"
+		},
+		{
+			"ImportPath": "github.com/lib/pq/oid",
+			"Rev": "b549d8792f245c2dcee7702ddcd844280b8ecb10"
 		},
 		{
 			"ImportPath": "github.com/martini-contrib/gzip",
@@ -30,7 +40,7 @@
 		},
 		{
 			"ImportPath": "github.com/spf13/cobra",
-			"Rev": "0330aef05c220120367226c43c7b583c72049eea"
+			"Rev": "10a8494a87448bf5003222d9974f166437e7f042"
 		},
 		{
 			"ImportPath": "github.com/spf13/pflag",
