@@ -379,6 +379,6 @@ func ServeWebsite() error {
 		port = "8080"
 	}
 
-	http.ListenAndServe("localhost:8000", m)
+	http.ListenAndServe(":"+port, m)
 	return nil
 }
