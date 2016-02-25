@@ -13,9 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-martini/martini"
+	"golang.org/x/net/context"
+
 	_ "github.com/lib/pq"
-	"github.com/martini-contrib/gzip"
+	"goji.io"
+	"goji.io/pat"
 )
 
 func GetHostname() string {
@@ -173,14 +175,16 @@ func (s *Set) Fill() {
 	s.CardsUrl = fmt.Sprintf("%s/mtg/cards?set=%s", GetHostname(), s.Id)
 }
 
-func JSON(code int, val interface{}) (int, []byte) {
+func JSON(w http.ResponseWriter, code int, val interface{}) {
 	blob, err := json.MarshalIndent(val, "", "  ")
 
 	if err != nil {
-		return 500, []byte(`{"error": "Internal server error :("}"`)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, `{"error": "Internal server error :("}"`)
+	} else {
+		w.WriteHeader(code)
+		fmt.Fprintf(w, string(blob))
 	}
-
-	return code, blob
 }
 
 func Errors(errors ...string) ApiError {
@@ -209,137 +213,122 @@ type ApiError struct {
 	Errors []string `json:"errors"`
 }
 
-func HandleCards(db *sql.DB, req *http.Request, w http.ResponseWriter) (int, []byte) {
-	cond, err, errors := ParseSearch(req.URL)
+type API struct {
+	db *sql.DB
+}
+
+func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	cond, err, errors := ParseSearch(r.URL)
 	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusBadRequest, Errors(errors...))
+		JSON(w, http.StatusBadRequest, Errors(errors...))
+		return
 	}
-	page, err := CardsPaging(req.URL)
+	page, err := CardsPaging(r.URL)
 	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusBadRequest, Errors(errors...))
+		JSON(w, http.StatusBadRequest, Errors(errors...))
+		return
 	}
-	cards, err := FetchCards(db, cond, page)
+	cards, err := FetchCards(a.db, cond, page)
 	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Cards not found"))
+		JSON(w, http.StatusNotFound, Errors("Cards not found"))
+		return
 	}
 
 	for i, _ := range cards {
 		cards[i].Fill()
 	}
 
-	w.Header().Set("Link", LinkHeader(GetHostname(), req.URL, page))
-	return JSON(http.StatusOK, cards)
+	w.Header().Set("Link", LinkHeader(GetHostname(), r.URL, page))
+	JSON(w, http.StatusOK, cards)
 }
 
-func HandleRandomCard(db *sql.DB, w http.ResponseWriter, r *http.Request) (int, []byte) {
+func (a *API) HandleRandomCard(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	var card string
-	err := db.QueryRow("SELECT id FROM cards ORDER BY RANDOM() LIMIT 1").Scan(&card)
+	err := a.db.QueryRow("SELECT id FROM cards ORDER BY RANDOM() LIMIT 1").Scan(&card)
 	switch {
 	case err == sql.ErrNoRows:
-		return JSON(http.StatusNotFound, Errors("No random card can be found"))
+		JSON(w, http.StatusNotFound, Errors("No random card can be found"))
 	case err != nil:
-		log.Println(err)
-		return JSON(http.StatusInternalServerError, Errors("Can't connect to database"))
+		JSON(w, http.StatusInternalServerError, Errors("Can't connect to database"))
 	default:
 		http.Redirect(w, r, "/mtg/cards/"+card, http.StatusFound)
-		return JSON(http.StatusFound, []string{"Redirecting to /mtg/cards/" + card})
+		JSON(w, http.StatusFound, []string{"Redirecting to /mtg/cards/" + card})
 	}
 }
 
-func HandleCard(db *sql.DB, params martini.Params) (int, []byte) {
-	card, err := FetchCard(db, params["id"])
+func (a *API) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	card, err := FetchCard(a.db, pat.Param(ctx, "id"))
 	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Card not found"))
+		JSON(w, http.StatusNotFound, Errors("Card not found"))
+		return
 	}
 
 	card.Fill()
 
-	return JSON(http.StatusOK, card)
+	JSON(w, http.StatusOK, card)
 }
 
-func HandleSets(db *sql.DB) (int, []byte) {
-	sets, err := FetchSets(db)
+func (a *API) HandleSets(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	sets, err := FetchSets(a.db)
 	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Sets not found"))
+		JSON(w, http.StatusNotFound, Errors("Sets not found"))
+	} else {
+		JSON(w, http.StatusOK, sets)
 	}
-	return JSON(http.StatusOK, sets)
 }
 
-func HandleSet(db *sql.DB, params martini.Params) (int, []byte) {
-	card, err := FetchSet(db, params["id"])
+func (a *API) HandleSet(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	card, err := FetchSet(a.db, pat.Param(ctx, "id"))
 
 	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors("Set not found"))
+		JSON(w, http.StatusNotFound, Errors("Set not found"))
+	} else {
+		JSON(w, http.StatusOK, card)
 	}
-
-	return JSON(http.StatusOK, card)
 }
 
-func HandleTerm(term string) func(*sql.DB) (int, []byte) {
-	return func(db *sql.DB) (int, []byte) {
-		terms, err := FetchTerms(db, term)
+func (a *API) HandleTerm(term string) func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		terms, err := FetchTerms(a.db, term)
 		if err != nil {
-			log.Println(err)
-			return JSON(http.StatusNotFound, Errors(term+" not found"))
+			JSON(w, http.StatusNotFound, Errors(term+" not found"))
+		} else {
+			JSON(w, http.StatusOK, terms)
 		}
-		return JSON(http.StatusOK, terms)
 	}
 }
 
-func HandleTypeahead(db *sql.DB, req *http.Request) (int, []byte) {
-	cards, err := FetchTypeahead(db, req.URL.Query().Get("q"))
+func (a *API) HandleTypeahead(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	cards, err := FetchTypeahead(a.db, r.URL.Query().Get("q"))
 	if err != nil {
-		log.Println(err)
-		return JSON(http.StatusNotFound, Errors(" Can't find any cards that match that search"))
+		JSON(w, http.StatusNotFound, Errors(" Can't find any cards that match that search"))
+		return
 	}
 
 	for i, _ := range cards {
 		cards[i].Fill()
 	}
 
-	return JSON(http.StatusOK, cards)
+	JSON(w, http.StatusOK, cards)
 }
 
-type Pong struct {
-	Rally string `json:"rally"`
-}
-
-func Ping(db *sql.DB) (int, []byte) {
-	if db.Ping() != nil {
-		return JSON(http.StatusInternalServerError, Errors("The database could not be reached"))
-	}
-	return JSON(http.StatusOK, Pong{Rally: "serve"})
-}
-
-func NotFound() (int, []byte) {
-	return JSON(http.StatusNotFound, Errors("No endpoint here"))
+func NotFound(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusNotFound, Errors("No endpoint here"))
 }
 
 // Logger returns a middleware handler that logs the request as it goes in and the response as it goes out.
-func Logger() martini.Handler {
-	return func(res http.ResponseWriter, req *http.Request, c martini.Context, log *log.Logger) {
+func Logging(next goji.Handler) goji.Handler {
+	mw := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		rw := res.(martini.ResponseWriter)
-		c.Next()
-		log.Printf("method=%s url=%s status=%v dt=%s\n", req.Method, req.URL.Path, rw.Status(), time.Since(start))
+		next.ServeHTTPC(ctx, w, r)
+		log.Printf("method=%s url=%s dt=%s\n", r.Method, r.URL.Path, time.Since(start))
 	}
+	return goji.HandlerFunc(mw)
 }
 
-func NewApi() *martini.Martini {
-	m := martini.New()
-
-	// Setup middleware
-	m.Use(martini.Recovery())
-	m.Use(Logger())
-	m.Use(gzip.All())
-	m.Use(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/mtg/cards/random" {
+func Headers(next goji.Handler) goji.Handler {
+	mw := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/mtg/cards/random" {
 			w.Header().Set("Cache-Control", "public,max-age=3600")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -349,24 +338,32 @@ func NewApi() *martini.Martini {
 		w.Header().Set("Disclaimer", "This API is not produced, endorsed, supported, or affiliated with Wizards of the Coast.")
 		w.Header().Set("Pricing", "store.tcgplayer.com allows you to buy cards from any of our vendors, all at the same time, in a simple checkout experience. Shop, Compare & Save with TCGplayer.com!")
 		w.Header().Set("Strict-Transport-Security", "max-age=86400")
-	})
+		next.ServeHTTPC(ctx, w, r)
+	}
+	return goji.HandlerFunc(mw)
+}
 
-	r := martini.NewRouter()
+func NewAPI(db *sql.DB) http.Handler {
+	mux := goji.NewMux()
+	app := API{db: db}
 
-	r.Get("/mtg/cards", HandleCards)
-	r.Get("/mtg/cards/typeahead", HandleTypeahead)
-	r.Get("/mtg/cards/random", HandleRandomCard)
-	r.Get("/mtg/cards/:id", HandleCard)
-	r.Get("/mtg/sets", HandleSets)
-	r.Get("/mtg/sets/:id", HandleSet)
-	r.Get("/mtg/colors", HandleTerm("colors"))
-	r.Get("/mtg/supertypes", HandleTerm("supertypes"))
-	r.Get("/mtg/subtypes", HandleTerm("subtypes"))
-	r.Get("/mtg/types", HandleTerm("types"))
-	r.NotFound(NotFound)
+	// Setup middleware
+	mux.UseC(Headers)
+	mux.UseC(Logging)
 
-	m.Action(r.Handle)
-	return m
+	mux.HandleFuncC(pat.Get("/mtg/cards"), app.HandleCards)
+	mux.HandleFuncC(pat.Get("/mtg/cards/typeahead"), app.HandleTypeahead)
+	mux.HandleFuncC(pat.Get("/mtg/cards/random"), app.HandleRandomCard)
+	mux.HandleFuncC(pat.Get("/mtg/cards/:id"), app.HandleCard)
+	mux.HandleFuncC(pat.Get("/mtg/sets"), app.HandleSets)
+	mux.HandleFuncC(pat.Get("/mtg/sets/:id"), app.HandleSet)
+	mux.HandleFuncC(pat.Get("/mtg/colors"), app.HandleTerm("colors"))
+	mux.HandleFuncC(pat.Get("/mtg/supertypes"), app.HandleTerm("supertypes"))
+	mux.HandleFuncC(pat.Get("/mtg/subtypes"), app.HandleTerm("subtypes"))
+	mux.HandleFuncC(pat.Get("/mtg/types"), app.HandleTerm("types"))
+
+	//r.NotFound(NotFound)
+	return mux
 }
 
 func ServeWebsite() error {
@@ -375,13 +372,13 @@ func ServeWebsite() error {
 		return err
 	}
 
-	m := NewApi()
-	m.Map(db)
+	m := NewAPI(db)
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	m.RunOnAddr(":" + port)
+
+	http.ListenAndServe("localhost:8000", m)
 	return nil
 }

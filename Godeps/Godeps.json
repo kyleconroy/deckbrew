@@ -13,16 +13,6 @@
 			"Rev": "'2b669bbfb7baae43e63e0cbe3ebb83c9f9ebb3e5'"
 		},
 		{
-			"ImportPath": "github.com/codegangsta/inject",
-			"Comment": "v1.0-rc1-4-g4b81725",
-			"Rev": "4b8172520a03fa190f427bbd284db01b459bfce7"
-		},
-		{
-			"ImportPath": "github.com/go-martini/martini",
-			"Comment": "v1.0-73-g8eda3a6",
-			"Rev": "8eda3a62a2d3a84c8d0bd82c0a6e884f872b68b4"
-		},
-		{
 			"ImportPath": "github.com/kyleconroy/migrator",
 			"Rev": "2ce60bf29dfa58c507cfd86c30c185090687952f"
 		},
@@ -35,16 +25,36 @@
 			"Rev": "b549d8792f245c2dcee7702ddcd844280b8ecb10"
 		},
 		{
-			"ImportPath": "github.com/martini-contrib/gzip",
-			"Rev": "c3f190769fc0769188614bbf077c82dacb8e9505"
-		},
-		{
 			"ImportPath": "github.com/spf13/cobra",
 			"Rev": "10a8494a87448bf5003222d9974f166437e7f042"
 		},
 		{
 			"ImportPath": "github.com/spf13/pflag",
 			"Rev": "94e98a55fb412fcbcfc302555cb990f5e1590627"
+		},
+		{
+			"ImportPath": "goji.io",
+			"Comment": "v1.0",
+			"Rev": "e1741450ad80d2837134e32ac7b1d0a7a2b11c51"
+		},
+		{
+			"ImportPath": "goji.io/internal",
+			"Comment": "v1.0",
+			"Rev": "e1741450ad80d2837134e32ac7b1d0a7a2b11c51"
+		},
+		{
+			"ImportPath": "goji.io/pat",
+			"Comment": "v1.0",
+			"Rev": "e1741450ad80d2837134e32ac7b1d0a7a2b11c51"
+		},
+		{
+			"ImportPath": "goji.io/pattern",
+			"Comment": "v1.0",
+			"Rev": "e1741450ad80d2837134e32ac7b1d0a7a2b11c51"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "0cb26f788dd4625d1956c6fd97ffc4c90669d129"
 		}
 	]
 }
