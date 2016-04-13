@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"stackmachine.com/cql"
 
 	"code.google.com/p/go.net/html"
 )
@@ -109,7 +110,7 @@ func loadPriceGuide(setName string) (map[string]Price, error) {
 	return ParsePriceGuide(resp.Body)
 }
 
-func ScrapePrices(db *sql.DB, set Set) (map[string]Price, error) {
+func ScrapePrices(db *cql.DB, set Set) (map[string]Price, error) {
 	finalPrices := map[string]Price{}
 
 	if !set.Priced {
@@ -136,7 +137,7 @@ func ScrapePrices(db *sql.DB, set Set) (map[string]Price, error) {
 	return associatePrices(db, set, prices)
 }
 
-func associatePrices(db *sql.DB, set Set, prices map[string]Price) (map[string]Price, error) {
+func associatePrices(db *cql.DB, set Set, prices map[string]Price) (map[string]Price, error) {
 	finalPrices := map[string]Price{}
 
 	rows, err := db.Query("SELECT record FROM cards WHERE sets @> $1", strings.ToLower("{"+set.Id+"}"))
@@ -265,7 +266,7 @@ type scrapeResult struct {
 	Price Price
 }
 
-func fetchPrices(db *sql.DB, sets []Set) map[string]Price {
+func fetchPrices(db *cql.DB, sets []Set) map[string]Price {
 	var wg sync.WaitGroup
 
 	pipeline := make(chan scrapeResult, 100)
@@ -302,7 +303,7 @@ func fetchPrices(db *sql.DB, sets []Set) map[string]Price {
 	return prices
 }
 
-func loadPrices(db *sql.DB) (map[string]Price, error) {
+func loadPrices(db *cql.DB) (map[string]Price, error) {
 	sets, err := FetchSets(db)
 	if err != nil {
 		return map[string]Price{}, err
@@ -310,7 +311,7 @@ func loadPrices(db *sql.DB) (map[string]Price, error) {
 	return fetchPrices(db, sets), nil
 }
 
-func insertPrices(db *sql.DB, older, newer map[string]Price) error {
+func insertPrices(db *cql.DB, older, newer map[string]Price) error {
 	for id, newPrice := range newer {
 		// Skip if the price hasn't changed
 		if true &&

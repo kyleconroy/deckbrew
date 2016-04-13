@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"stackmachine.com/cql"
+
 	"golang.org/x/net/context"
 
 	_ "github.com/lib/pq"
@@ -212,7 +214,7 @@ type ApiError struct {
 }
 
 type API struct {
-	db *sql.DB
+	db *cql.DB
 }
 
 func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -276,7 +278,7 @@ func (a *API) HandleSets(ctx context.Context, w http.ResponseWriter, r *http.Req
 }
 
 func (a *API) HandleSet(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	card, err := FetchSet(a.db, pat.Param(ctx, "id"))
+	card, err := FetchSet(ctx, a.db, pat.Param(ctx, "id"))
 
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors("Set not found"))
@@ -314,7 +316,7 @@ func NotFound(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusNotFound, Errors("No endpoint here"))
 }
 
-func NewAPI(db *sql.DB) (http.Handler, error) {
+func NewAPI(db *cql.DB) (http.Handler, error) {
 	mux := goji.NewMux()
 	app := API{db: db}
 

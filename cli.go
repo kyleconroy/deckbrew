@@ -23,6 +23,7 @@ func AddCommand(root *cobra.Command, name, desc string, run func() error) {
 }
 
 func main() {
+	log.SetFlags(0)
 	opentracing.InitGlobalTracer(&logtrace.Tracer{})
 
 	var rootCmd = &cobra.Command{Use: "brewapi"}

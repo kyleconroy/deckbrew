@@ -7,18 +7,21 @@ import (
 	"os"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"github.com/kyleconroy/migrator"
 	_ "github.com/lib/pq"
+	"stackmachine.com/cql"
 )
 
-func getDatabase() (*sql.DB, error) {
+func getDatabase() (*cql.DB, error) {
 	url := os.Getenv("DATABASE_URL")
 
 	if url == "" {
 		return nil, fmt.Errorf("connection requires DATABASE_URL environment variable")
 	}
 
-	db, err := sql.Open("postgres", url)
+	db, err := cql.Open("postgres", url)
 
 	if err != nil {
 		return db, err
@@ -27,14 +30,14 @@ func getDatabase() (*sql.DB, error) {
 	return db, nil
 }
 
-func FetchSet(db *sql.DB, id string) (Set, error) {
+func FetchSet(ctx context.Context, db *cql.DB, id string) (Set, error) {
 	var set Set
-	row := db.QueryRow("SELECT id,name,border,type FROM sets WHERE id = $1", id)
+	row := db.QueryRowC(ctx, "SELECT id,name,border,type FROM sets WHERE id = $1", id)
 	err := row.Scan(&set.Id, &set.Name, &set.Border, &set.Type)
 	return set, err
 }
 
-func FetchSets(db *sql.DB) ([]Set, error) {
+func FetchSets(db *cql.DB) ([]Set, error) {
 	sets := []Set{}
 	rows, err := db.Query("SELECT id,name,border,type,price_guide,priced FROM sets ORDER BY name")
 	if err != nil {
@@ -52,7 +55,7 @@ func FetchSets(db *sql.DB) ([]Set, error) {
 	return sets, nil
 }
 
-func FetchTerms(db *sql.DB, term string) ([]string, error) {
+func FetchTerms(db *cql.DB, term string) ([]string, error) {
 	result := []string{}
 
 	rows, err := db.Query("select distinct unnest(" + term + ") as t from cards WHERE NOT sets && '{unh,ugl}' ORDER BY t ASC")
@@ -101,7 +104,7 @@ func scanCards(rows *sql.Rows) ([]Card, error) {
 	return cards, nil
 }
 
-func FetchTypeahead(db *sql.DB, search string) ([]Card, error) {
+func FetchTypeahead(db *cql.DB, search string) ([]Card, error) {
 	if strings.ContainsAny(search, "%_") {
 		return []Card{}, fmt.Errorf("Search string can't contain '%%' or '_'")
 	}
@@ -115,7 +118,7 @@ func FetchTypeahead(db *sql.DB, search string) ([]Card, error) {
 	return scanCards(rows)
 }
 
-func FetchCards(db *sql.DB, cond Condition, page int) ([]Card, error) {
+func FetchCards(db *cql.DB, cond Condition, page int) ([]Card, error) {
 	query := Select("record").From("cards").Where(cond).OrderBy("name", true)
 	limit := query.Limit(100).Offset(page * 100)
 
@@ -134,7 +137,7 @@ func FetchCards(db *sql.DB, cond Condition, page int) ([]Card, error) {
 	return scanCards(rows)
 }
 
-func FetchCardIDs(db *sql.DB) ([]string, error) {
+func FetchCardIDs(db *cql.DB) ([]string, error) {
 	ids := []string{}
 
 	rows, err := db.Query("SELECT id FROM cards")
@@ -153,7 +156,7 @@ func FetchCardIDs(db *sql.DB) ([]string, error) {
 	return ids, rows.Err()
 }
 
-func FetchCard(db *sql.DB, id string) (Card, error) {
+func FetchCard(db *cql.DB, id string) (Card, error) {
 	var blob []byte
 	var card Card
 	err := db.QueryRow("SELECT record FROM cards WHERE id = $1", id).Scan(&blob)
@@ -166,7 +169,7 @@ func FetchCard(db *sql.DB, id string) (Card, error) {
 	return card, json.Unmarshal(blob, &card)
 }
 
-func FetchPrices(db *sql.DB) (map[string]Price, error) {
+func FetchPrices(db *cql.DB) (map[string]Price, error) {
 	prices := map[string]Price{}
 
 	rows, err := db.Query(`
@@ -191,7 +194,7 @@ func FetchPrices(db *sql.DB) (map[string]Price, error) {
 	return prices, rows.Err()
 }
 
-func InsertPrice(db *sql.DB, id string, price Price) error {
+func InsertPrice(db *cql.DB, id string, price Price) error {
 	_, err := db.Exec(`
     INSERT INTO prices (multiverse_id, low, high, median)
     VALUES ($1, $2, $3, $4)
@@ -204,5 +207,5 @@ func MigrateDatabase() error {
 	if err != nil {
 		return err
 	}
-	return migrator.Run(db, "migrations")
+	return migrator.Run(db.DB, "migrations")
 }

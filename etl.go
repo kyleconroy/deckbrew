@@ -3,7 +3,6 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +12,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"stackmachine.com/cql"
 
 	_ "github.com/lib/pq"
 )
@@ -207,7 +208,7 @@ func existingCard(ids []string, id string) bool {
 	return false
 }
 
-func CreateCollection(db *sql.DB, collection MTGCollection) error {
+func CreateCollection(db *cql.DB, collection MTGCollection) error {
 	formats, err := LoadFormats()
 	if err != nil {
 		return err

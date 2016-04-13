@@ -68,8 +68,12 @@
 			"Rev": "0cb26f788dd4625d1956c6fd97ffc4c90669d129"
 		},
 		{
+			"ImportPath": "stackmachine.com/cql",
+			"Rev": "4cc38a523dd5635c7129d07ac065b6e1d3f706f5"
+		},
+		{
 			"ImportPath": "stackmachine.com/logtrace",
-			"Rev": "8e5ea359d1267cd82646d2108256527cc1dbc64f"
+			"Rev": "4cc38a523dd5635c7129d07ac065b6e1d3f706f5"
 		}
 	]
 }
