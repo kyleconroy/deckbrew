@@ -42,7 +42,7 @@ func (crw *responseWriter) WriteHeader(status int) {
 
 func Tracing(next goji.Handler) goji.Handler {
 	return goji.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		name := "/not-found"
+		name := r.URL.Path
 		if pattern.Path(ctx) != "" {
 			name = pattern.Path(ctx)
 		}
