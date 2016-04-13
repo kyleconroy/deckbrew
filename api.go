@@ -321,7 +321,7 @@ func NewAPI(db *cql.DB) (http.Handler, error) {
 	app := API{db: db}
 
 	// Setup middleware
-	// mux.UseC(Tracing)
+	mux.UseC(Tracing)
 	mux.UseC(Headers)
 
 	mux.HandleFuncC(pat.Get("/mtg/cards"), app.HandleCards)
