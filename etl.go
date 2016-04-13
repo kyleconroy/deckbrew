@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"stackmachine.com/cql"
 
 	_ "github.com/lib/pq"
@@ -209,6 +211,7 @@ func existingCard(ids []string, id string) bool {
 }
 
 func CreateCollection(db *cql.DB, collection MTGCollection) error {
+	ctx := context.TODO()
 	formats, err := LoadFormats()
 	if err != nil {
 		return err
@@ -216,12 +219,12 @@ func CreateCollection(db *cql.DB, collection MTGCollection) error {
 	sets, cards := TransformCollection(collection, formats)
 
 	// Load the current cards and sets
-	currentSets, err := FetchSets(db)
+	currentSets, err := FetchSets(ctx, db)
 	if err != nil {
 		return err
 	}
 
-	currentCards, err := FetchCardIDs(db)
+	currentCards, err := FetchCardIDs(ctx, db)
 	if err != nil {
 		return err
 	}

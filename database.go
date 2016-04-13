@@ -37,9 +37,9 @@ func FetchSet(ctx context.Context, db *cql.DB, id string) (Set, error) {
 	return set, err
 }
 
-func FetchSets(db *cql.DB) ([]Set, error) {
+func FetchSets(ctx context.Context, db *cql.DB) ([]Set, error) {
 	sets := []Set{}
-	rows, err := db.Query("SELECT id,name,border,type,price_guide,priced FROM sets ORDER BY name")
+	rows, err := db.QueryC(ctx, "SELECT id,name,border,type,price_guide,priced FROM sets ORDER BY name")
 	if err != nil {
 		return sets, err
 	}
@@ -55,10 +55,10 @@ func FetchSets(db *cql.DB) ([]Set, error) {
 	return sets, nil
 }
 
-func FetchTerms(db *cql.DB, term string) ([]string, error) {
+func FetchTerms(ctx context.Context, db *cql.DB, term string) ([]string, error) {
 	result := []string{}
 
-	rows, err := db.Query("select distinct unnest(" + term + ") as t from cards WHERE NOT sets && '{unh,ugl}' ORDER BY t ASC")
+	rows, err := db.QueryC(ctx, "select distinct unnest("+term+") as t from cards WHERE NOT sets && '{unh,ugl}' ORDER BY t ASC")
 	if err != nil {
 		return result, err
 	}
@@ -104,12 +104,12 @@ func scanCards(rows *sql.Rows) ([]Card, error) {
 	return cards, nil
 }
 
-func FetchTypeahead(db *cql.DB, search string) ([]Card, error) {
+func FetchTypeahead(ctx context.Context, db *cql.DB, search string) ([]Card, error) {
 	if strings.ContainsAny(search, "%_") {
 		return []Card{}, fmt.Errorf("Search string can't contain '%%' or '_'")
 	}
 
-	rows, err := db.Query("SELECT record FROM cards WHERE name ILIKE $1 ORDER BY name LIMIT 10", search+"%")
+	rows, err := db.QueryC(ctx, "SELECT record FROM cards WHERE name ILIKE $1 ORDER BY name LIMIT 10", search+"%")
 
 	if err != nil {
 		return []Card{}, err
@@ -118,7 +118,7 @@ func FetchTypeahead(db *cql.DB, search string) ([]Card, error) {
 	return scanCards(rows)
 }
 
-func FetchCards(db *cql.DB, cond Condition, page int) ([]Card, error) {
+func FetchCards(ctx context.Context, db *cql.DB, cond Condition, page int) ([]Card, error) {
 	query := Select("record").From("cards").Where(cond).OrderBy("name", true)
 	limit := query.Limit(100).Offset(page * 100)
 
@@ -128,7 +128,7 @@ func FetchCards(db *cql.DB, cond Condition, page int) ([]Card, error) {
 		return []Card{}, err
 	}
 
-	rows, err := db.Query(ql, items...)
+	rows, err := db.QueryC(ctx, ql, items...)
 
 	if err != nil {
 		return []Card{}, err
@@ -137,10 +137,10 @@ func FetchCards(db *cql.DB, cond Condition, page int) ([]Card, error) {
 	return scanCards(rows)
 }
 
-func FetchCardIDs(db *cql.DB) ([]string, error) {
+func FetchCardIDs(ctx context.Context, db *cql.DB) ([]string, error) {
 	ids := []string{}
 
-	rows, err := db.Query("SELECT id FROM cards")
+	rows, err := db.QueryC(ctx, "SELECT id FROM cards")
 	if err != nil {
 		return ids, err
 	}
@@ -156,10 +156,10 @@ func FetchCardIDs(db *cql.DB) ([]string, error) {
 	return ids, rows.Err()
 }
 
-func FetchCard(db *cql.DB, id string) (Card, error) {
+func FetchCard(ctx context.Context, db *cql.DB, id string) (Card, error) {
 	var blob []byte
 	var card Card
-	err := db.QueryRow("SELECT record FROM cards WHERE id = $1", id).Scan(&blob)
+	err := db.QueryRowC(ctx, "SELECT record FROM cards WHERE id = $1", id).Scan(&blob)
 	if err == sql.ErrNoRows {
 		return card, fmt.Errorf("No card with ID %s", id)
 	}
@@ -169,10 +169,10 @@ func FetchCard(db *cql.DB, id string) (Card, error) {
 	return card, json.Unmarshal(blob, &card)
 }
 
-func FetchPrices(db *cql.DB) (map[string]Price, error) {
+func FetchPrices(ctx context.Context, db *cql.DB) (map[string]Price, error) {
 	prices := map[string]Price{}
 
-	rows, err := db.Query(`
+	rows, err := db.QueryC(ctx, `
     SELECT DISTINCT ON (multiverse_id) multiverse_id, low, high, median
     FROM prices
     ORDER BY multiverse_id, created DESC
@@ -194,8 +194,8 @@ func FetchPrices(db *cql.DB) (map[string]Price, error) {
 	return prices, rows.Err()
 }
 
-func InsertPrice(db *cql.DB, id string, price Price) error {
-	_, err := db.Exec(`
+func InsertPrice(ctx context.Context, db *cql.DB, id string, price Price) error {
+	_, err := db.ExecC(ctx, `
     INSERT INTO prices (multiverse_id, low, high, median)
     VALUES ($1, $2, $3, $4)
     `, id, price.Low, price.High, price.Average)

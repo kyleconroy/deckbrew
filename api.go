@@ -228,7 +228,7 @@ func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Re
 		JSON(w, http.StatusBadRequest, Errors(errors...))
 		return
 	}
-	cards, err := FetchCards(a.db, cond, page)
+	cards, err := FetchCards(ctx, a.db, cond, page)
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors("Cards not found"))
 		return
@@ -257,7 +257,7 @@ func (a *API) HandleRandomCard(ctx context.Context, w http.ResponseWriter, r *ht
 }
 
 func (a *API) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	card, err := FetchCard(a.db, pat.Param(ctx, "id"))
+	card, err := FetchCard(ctx, a.db, pat.Param(ctx, "id"))
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors("Card not found"))
 		return
@@ -269,7 +269,7 @@ func (a *API) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.Req
 }
 
 func (a *API) HandleSets(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	sets, err := FetchSets(a.db)
+	sets, err := FetchSets(ctx, a.db)
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors("Sets not found"))
 	} else {
@@ -289,7 +289,7 @@ func (a *API) HandleSet(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 func (a *API) HandleTerm(term string) func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		terms, err := FetchTerms(a.db, term)
+		terms, err := FetchTerms(ctx, a.db, term)
 		if err != nil {
 			JSON(w, http.StatusNotFound, Errors(term+" not found"))
 		} else {
@@ -299,7 +299,7 @@ func (a *API) HandleTerm(term string) func(ctx context.Context, w http.ResponseW
 }
 
 func (a *API) HandleTypeahead(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	cards, err := FetchTypeahead(a.db, r.URL.Query().Get("q"))
+	cards, err := FetchTypeahead(ctx, a.db, r.URL.Query().Get("q"))
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors(" Can't find any cards that match that search"))
 		return

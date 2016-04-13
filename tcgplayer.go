@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/net/context"
+
 	"stackmachine.com/cql"
 
 	"code.google.com/p/go.net/html"
@@ -304,7 +306,7 @@ func fetchPrices(db *cql.DB, sets []Set) map[string]Price {
 }
 
 func loadPrices(db *cql.DB) (map[string]Price, error) {
-	sets, err := FetchSets(db)
+	sets, err := FetchSets(context.TODO(), db)
 	if err != nil {
 		return map[string]Price{}, err
 	}
@@ -321,7 +323,7 @@ func insertPrices(db *cql.DB, older, newer map[string]Price) error {
 			continue
 		}
 
-		err := InsertPrice(db, id, newPrice)
+		err := InsertPrice(context.TODO(), db, id, newPrice)
 		if err != nil {
 			return err
 		}
@@ -335,7 +337,7 @@ func SyncPrices() error {
 		return err
 	}
 
-	savedPrices, err := FetchPrices(db)
+	savedPrices, err := FetchPrices(context.TODO(), db)
 	if err != nil {
 		return err
 	}
@@ -374,7 +376,7 @@ func ValidatePrices() error {
 	if err != nil {
 		return err
 	}
-	sets, err := FetchSets(db)
+	sets, err := FetchSets(context.TODO(), db)
 	if err != nil {
 		return err
 	}
