@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"stackmachine.com/logtrace"
 )
 
 func AddCommand(root *cobra.Command, name, desc string, run func() error) {
@@ -21,6 +23,8 @@ func AddCommand(root *cobra.Command, name, desc string, run func() error) {
 }
 
 func main() {
+	opentracing.InitGlobalTracer(&logtrace.Tracer{})
+
 	var rootCmd = &cobra.Command{Use: "brewapi"}
 	AddCommand(rootCmd, "migrate", "Migrate the database to the latest scheme", MigrateDatabase)
 	AddCommand(rootCmd, "serve", "Start and serve the REST API", ServeWebsite)

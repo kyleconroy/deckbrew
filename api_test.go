@@ -39,15 +39,14 @@ func TestSlug(t *testing.T) {
 
 func TestApi(t *testing.T) {
 	db, err := getDatabase()
-	pricelist := PriceList{}
-
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	m := NewApi()
-	m.Map(db)
-	m.Map(&pricelist)
+	m, err := NewAPI(db)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ts := httptest.NewServer(m)
 	defer ts.Close()
@@ -101,6 +100,7 @@ func TestApi(t *testing.T) {
 		var card Card
 
 		res, err := http.Get(ts.URL + u)
+		defer res.Body.Close()
 
 		if err != nil {
 			return card, err
@@ -109,8 +109,6 @@ func TestApi(t *testing.T) {
 		if res.StatusCode != 200 {
 			return card, fmt.Errorf("Expected %s to return 200, not %d", u, res.StatusCode)
 		}
-
-		defer res.Body.Close()
 
 		blob, err := ioutil.ReadAll(res.Body)
 

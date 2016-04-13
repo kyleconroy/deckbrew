@@ -4,14 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"golang.org/x/net/context"
 
@@ -316,40 +314,13 @@ func NotFound(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusNotFound, Errors("No endpoint here"))
 }
 
-// Logger returns a middleware handler that logs the request as it goes in and the response as it goes out.
-func Logging(next goji.Handler) goji.Handler {
-	mw := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		next.ServeHTTPC(ctx, w, r)
-		log.Printf("method=%s url=%s dt=%s\n", r.Method, r.URL.Path, time.Since(start))
-	}
-	return goji.HandlerFunc(mw)
-}
-
-func Headers(next goji.Handler) goji.Handler {
-	mw := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/mtg/cards/random" {
-			w.Header().Set("Cache-Control", "public,max-age=3600")
-		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Expose-Headers", "link,content-length")
-		w.Header().Set("License", "The textual information presented through this API about Magic: The Gathering is copyrighted by Wizards of the Coast.")
-		w.Header().Set("Disclaimer", "This API is not produced, endorsed, supported, or affiliated with Wizards of the Coast.")
-		w.Header().Set("Pricing", "store.tcgplayer.com allows you to buy cards from any of our vendors, all at the same time, in a simple checkout experience. Shop, Compare & Save with TCGplayer.com!")
-		w.Header().Set("Strict-Transport-Security", "max-age=86400")
-		next.ServeHTTPC(ctx, w, r)
-	}
-	return goji.HandlerFunc(mw)
-}
-
-func NewAPI(db *sql.DB) http.Handler {
+func NewAPI(db *sql.DB) (http.Handler, error) {
 	mux := goji.NewMux()
 	app := API{db: db}
 
 	// Setup middleware
+	// mux.UseC(Tracing)
 	mux.UseC(Headers)
-	mux.UseC(Logging)
 
 	mux.HandleFuncC(pat.Get("/mtg/cards"), app.HandleCards)
 	mux.HandleFuncC(pat.Get("/mtg/cards/typeahead"), app.HandleTypeahead)
@@ -363,7 +334,7 @@ func NewAPI(db *sql.DB) http.Handler {
 	mux.HandleFuncC(pat.Get("/mtg/types"), app.HandleTerm("types"))
 
 	//r.NotFound(NotFound)
-	return mux
+	return mux, nil
 }
 
 func ServeWebsite() error {
@@ -372,7 +343,7 @@ func ServeWebsite() error {
 		return err
 	}
 
-	m := NewAPI(db)
+	m, err := NewAPI(db)
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -1,6 +1,7 @@
 {
 	"ImportPath": "github.com/kyleconroy/deckbrew-api",
 	"GoVersion": "go1.6",
+	"GodepVersion": "v62",
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go.net/html",
@@ -25,6 +26,11 @@
 			"Rev": "b549d8792f245c2dcee7702ddcd844280b8ecb10"
 		},
 		{
+			"ImportPath": "github.com/opentracing/opentracing-go",
+			"Comment": "v0.2-179-g01498ab",
+			"Rev": "01498abd158dfdbe8e251856bc7d14cb0f046fa3"
+		},
+		{
 			"ImportPath": "github.com/spf13/cobra",
 			"Rev": "10a8494a87448bf5003222d9974f166437e7f042"
 		},
@@ -43,6 +49,11 @@
 			"Rev": "e1741450ad80d2837134e32ac7b1d0a7a2b11c51"
 		},
 		{
+			"ImportPath": "goji.io/middleware",
+			"Comment": "v1.0",
+			"Rev": "e1741450ad80d2837134e32ac7b1d0a7a2b11c51"
+		},
+		{
 			"ImportPath": "goji.io/pat",
 			"Comment": "v1.0",
 			"Rev": "e1741450ad80d2837134e32ac7b1d0a7a2b11c51"
@@ -55,6 +66,10 @@
 		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "0cb26f788dd4625d1956c6fd97ffc4c90669d129"
+		},
+		{
+			"ImportPath": "stackmachine.com/logtrace",
+			"Rev": "8e5ea359d1267cd82646d2108256527cc1dbc64f"
 		}
 	]
 }
