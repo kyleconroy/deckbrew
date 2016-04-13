@@ -7,7 +7,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"goji.io"
-	"goji.io/pattern"
+	"goji.io/middleware"
+	"goji.io/pat"
 	"golang.org/x/net/context"
 )
 
@@ -43,8 +44,9 @@ func (crw *responseWriter) WriteHeader(status int) {
 func Tracing(next goji.Handler) goji.Handler {
 	return goji.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		name := r.URL.Path
-		if pattern.Path(ctx) != "" {
-			name = pattern.Path(ctx)
+		pattern := middleware.Pattern(ctx)
+		if ppattern, ok := pattern.(*pat.Pattern); ok {
+			name = ppattern.String()
 		}
 
 		span, nctx := opentracing.StartSpanFromContext(ctx, name)
