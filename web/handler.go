@@ -31,6 +31,7 @@ const tmpl = `
   </head>
   <body>
     <h1>{{.Card.Name}}</h1>
+    <img src="{{.Edition.ImageUrl}}" alt="{{.Card.Name}}" />
   </body>
 </html>
 `
