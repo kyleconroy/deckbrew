@@ -98,11 +98,12 @@ func TransformCard(c MTGCard) Card {
 		Toughness:     c.Toughness,
 		Loyalty:       c.Loyalty,
 		ManaCost:      c.ManaCost,
+		FormatMap:     TransformLegalities(c.Legalities),
 		ConvertedCost: int(c.ConvertedCost),
 	}
 }
 
-func TransformCollection(collection MTGCollection, formats []MTGFormat) ([]Set, []Card) {
+func TransformCollection(collection MTGCollection) ([]Set, []Card) {
 	cards := []Card{}
 	ids := map[string]Card{}
 	editions := []Edition{}
@@ -136,61 +137,27 @@ func TransformCollection(collection MTGCollection, formats []MTGFormat) ([]Set, 
 		}
 	}
 
-	for _, format := range formats {
-		for i, _ := range cards {
-			AddFormat(&cards[i], &format)
-		}
-	}
-
 	return sets, cards
 }
 
-func AddFormat(c *Card, f *MTGFormat) {
-	if c.FormatMap == nil {
-		c.FormatMap = map[string]string{}
+func TransformLegalities(lgs MTGLegalities) map[string]string {
+	formats := map[string]string{}
+	if lgs.Standard != "" {
+		formats["standard"] = strings.ToLower(lgs.Standard)
 	}
-
-	for _, special := range []string{"conspiracy", "phenomenon", "plane", "scheme", "vanguard"} {
-		for _, t := range c.Types {
-			if t == special {
-				return
-			}
-		}
+	if lgs.Modern != "" {
+		formats["modern"] = strings.ToLower(lgs.Modern)
 	}
-
-	for _, edition := range c.Editions {
-		if edition.SetId == "UNH" || edition.SetId == "UGL" {
-			return
-		}
+	if lgs.Legacy != "" {
+		formats["legacy"] = strings.ToLower(lgs.Legacy)
 	}
-
-	for _, b := range f.Banned {
-		if c.Id == b.Id {
-			c.FormatMap[f.Name] = "banned"
-			return
-		}
+	if lgs.Vintage != "" {
+		formats["vintage"] = strings.ToLower(lgs.Vintage)
 	}
-
-	for _, r := range f.Restricted {
-		if c.Id == r.Id {
-			c.FormatMap[f.Name] = "restricted"
-			return
-		}
+	if lgs.Commander != "" {
+		formats["commander"] = strings.ToLower(lgs.Commander)
 	}
-
-	if len(f.Sets) == 0 {
-		c.FormatMap[f.Name] = "legal"
-		return
-	}
-
-	for _, edition := range c.Editions {
-		for _, format_set := range f.Sets {
-			if strings.ToUpper(format_set) == strings.ToUpper(edition.SetId) {
-				c.FormatMap[f.Name] = "legal"
-				return
-			}
-		}
-	}
+	return formats
 }
 
 func existingSet(sets []Set, id string) bool {
@@ -213,11 +180,7 @@ func existingCard(ids []string, id string) bool {
 
 func CreateCollection(db *cql.DB, collection MTGCollection) error {
 	ctx := context.TODO()
-	formats, err := LoadFormats()
-	if err != nil {
-		return err
-	}
-	sets, cards := TransformCollection(collection, formats)
+	sets, cards := TransformCollection(collection)
 
 	// Load the current cards and sets
 	currentSets, err := FetchSets(ctx, db)
@@ -290,28 +253,6 @@ func CreateCollection(db *cql.DB, collection MTGCollection) error {
 		i += 1
 	}
 	return tx.Commit()
-}
-
-func LoadFormats() ([]MTGFormat, error) {
-	paths := []string{
-		"formats/vintage.json", "formats/legacy.json",
-		"formats/commander.json", "formats/standard.json",
-		"formats/modern.json",
-	}
-
-	formats := []MTGFormat{}
-
-	for _, path := range paths {
-		f, err := LoadFormat(path)
-
-		if err != nil {
-			return formats, err
-		}
-
-		formats = append(formats, f)
-	}
-
-	return formats, nil
 }
 
 // I probably should have just kept the Makefile
