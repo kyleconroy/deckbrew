@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/kyleconroy/deckbrew-api",
+	"ImportPath": "github.com/kyleconroy/deckbrew",
 	"GoVersion": "go1.6",
 	"GodepVersion": "v62",
 	"Deps": [
@@ -69,11 +69,15 @@
 		},
 		{
 			"ImportPath": "stackmachine.com/cql",
-			"Rev": "4cc38a523dd5635c7129d07ac065b6e1d3f706f5"
+			"Rev": "fdd63775af1ab26c46ce125dbb568120828e5c07"
 		},
 		{
 			"ImportPath": "stackmachine.com/logtrace",
-			"Rev": "4cc38a523dd5635c7129d07ac065b6e1d3f706f5"
+			"Rev": "fdd63775af1ab26c46ce125dbb568120828e5c07"
+		},
+		{
+			"ImportPath": "stackmachine.com/vhost",
+			"Rev": "fdd63775af1ab26c46ce125dbb568120828e5c07"
 		}
 	]
 }
