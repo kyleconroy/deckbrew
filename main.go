@@ -10,6 +10,7 @@ import (
 	"github.com/kyleconroy/deckbrew/api"
 	"github.com/kyleconroy/deckbrew/config"
 	"github.com/kyleconroy/deckbrew/image"
+	"github.com/kyleconroy/deckbrew/web"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 )
@@ -47,6 +48,7 @@ func Serve() error {
 
 	return http.ListenAndServe(":"+cfg.Port, vhost.Handler{
 		cfg.HostAPI:   api.New(cfg),
+		cfg.HostWeb:   web.New(cfg),
 		cfg.HostImage: image.New(),
 	})
 }

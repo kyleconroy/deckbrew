@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<title>Deckbrew - Magic: The Gathering API</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="DeckBrew's JSON API is the easiest way to access Magic: The Gathering card information It's free to use with no sign-up required.
+">
+ 
+<link rel="stylesheet" href="/css/normalize.css">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/syntax.css">
+</head>
+<body>
+<div class="site">
+<div class="header">
+<div class="content">
+<div class="wrapper">
+<h1 class="title"><a href="http://deckbrew.com/">DeckBrew</a></h1><ul class="nav">
+<li><a class="" href="http://deckbrew.com/">Overview</a></li>
+<li><a class="active" href="http://deckbrew.com/api/">API</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="content">
+<div class="page">
+<h1>API</h1>
+<h2>Overview</h2>
+<p>The DeckBrew API is the easiest way to get Magic: The Gathering information
+into your application. It's free to use with no sign-up required.</p>
+<p>This API wouldn't have been possible without the amazing
+<a href="http://mtgjson.com/">mtgjson</a> and <a href="http://mtgimage.com/">mtgimage</a> resources.</p>
+<p>All API access is over HTTPS, and accessed from the <code>api.deckbrew.com</code> domain.</p>
+<p>All data is sent and received as JSON.</p>
+<h3>Projects Using the DeckBrew API</h3>
+<ul>
+<li><a href="https://play.google.com/store/apps/details?id=com.zach.wilson.magic.app">Magic Card Viewer and Pricer by Zachary Wilson</a></li>
+<li><a href="http://www.mtgne.com/">MTG PriceFinder by Ken Briscoe</a></li>
+</ul>
+<h3>Pagination</h3>
+<p>Requests that return multiple items will be paginated to 100 items by default.
+You can specify further pages with the <code>?page</code> parameter.</p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">$ curl https://api.deckbrew.com/mtg/cards?page=2
+</code></pre></div>
+<p>Note that page numbering is 0-based and that omitting the <code>?page</code> parameter
+will return the first page.</p>
+<h4>Link Header</h4>
+<p>The pagination info is included in the Link header. It is important to follow
+these Link header values instead of constructing your own URLs.</p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">Link: &lt;https://api.deckbrew.com/mtg/cards?page=3&gt;; rel="next",
+  &lt;https://api.deckbrew.com/mtg/cards?page=1&gt;; rel="prev"
+</code></pre></div>
+<p>The possible <code>rel</code> values are:</p>
+<table><thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>next</td>
+<td>Shows the URL of the immediate next page of results.</td>
+</tr>
+<tr>
+<td>prev</td>
+<td>Shows the URL of the immediate previous page of results.</td>
+</tr>
+</tbody></table>
+<h3>Errors</h3>
+<p>Any response with a status code greater than or equal to 400 is considered an
+error. An error object will be returned with an <code>errors</code> key pointing to a list
+of errors for a given request.</p>
+<blockquote>
+<p>GET /mtg/page/not/found</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">{</span>
+  <span class="s2">"errors"</span><span class="o">:</span> <span class="p">[</span>
+    <span class="s2">"Card with ID '123' not found"</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2>Magic Cards</h2>
+<p>Due to a misundestanding between TCGPlayer and Deckbrew, prices are no longer
+available in the API. To prevent breaking existing applications, all prices
+have been set to zero.</p>
+<h3>List all cards</h3>
+<p>Return a list of all Magic cards. Can be filtered using query string parameters
+to narrow the search.</p>
+<blockquote>
+<p>GET /mtg/cards</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">[</span>
+  <span class="p">{</span>
+    <span class="s2">"name"</span><span class="o">:</span> <span class="s2">"About Face"</span><span class="p">,</span>
+    <span class="s2">"id"</span><span class="o">:</span> <span class="s2">"about-face"</span><span class="p">,</span>
+    <span class="s2">"url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/cards/about-face"</span><span class="p">,</span>
+    <span class="s2">"store_url"</span><span class="o">:</span> <span class="s2">"http://store.tcgplayer.com/magic/urzas-legacy/about-face"</span><span class="p">,</span>
+    <span class="s2">"types"</span><span class="o">:</span> <span class="p">[</span>
+      <span class="s2">"instant"</span>
+    <span class="p">],</span>
+    <span class="s2">"colors"</span><span class="o">:</span> <span class="p">[</span>
+      <span class="s2">"red"</span>
+    <span class="p">],</span>
+    <span class="s2">"cmc"</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">"cost"</span><span class="o">:</span> <span class="s2">"{R}"</span><span class="p">,</span>
+    <span class="s2">"text"</span><span class="o">:</span> <span class="s2">"Switch target creature's power and toughness until end of turn."</span><span class="p">,</span>
+    <span class="s2">"formats"</span><span class="o">:</span> <span class="p">{</span>
+      <span class="s2">"commander"</span><span class="o">:</span> <span class="s2">"legal"</span><span class="p">,</span>
+      <span class="s2">"legacy"</span><span class="o">:</span> <span class="s2">"legal"</span><span class="p">,</span>
+      <span class="s2">"vintage"</span><span class="o">:</span> <span class="s2">"legal"</span>
+    <span class="p">},</span>
+    <span class="s2">"editions"</span><span class="o">:</span> <span class="p">[</span>
+      <span class="p">{</span>
+        <span class="s2">"set"</span><span class="o">:</span> <span class="s2">"Urza's Legacy"</span><span class="p">,</span>
+        <span class="s2">"rarity"</span><span class="o">:</span> <span class="s2">"common"</span><span class="p">,</span>
+        <span class="s2">"artist"</span><span class="o">:</span> <span class="s2">"Melissa A. Benson"</span><span class="p">,</span>
+        <span class="s2">"multiverse_id"</span><span class="o">:</span> <span class="mi">12414</span><span class="p">,</span>
+        <span class="s2">"flavor"</span><span class="o">:</span> <span class="s2">"The overconfident are the most vulnerable."</span><span class="p">,</span>
+        <span class="s2">"number"</span><span class="o">:</span> <span class="s2">"73"</span><span class="p">,</span>
+        <span class="s2">"layout"</span><span class="o">:</span> <span class="s2">"normal"</span><span class="p">,</span>
+        <span class="s2">"price"</span><span class="o">:</span> <span class="p">{</span>
+            <span class="s2">"low"</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">"average"</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">"high"</span><span class="o">:</span> <span class="mi">0</span>
+        <span class="p">},</span>
+        <span class="s2">"url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/cards?multiverseid=12414"</span><span class="p">,</span>
+        <span class="s2">"image_url"</span><span class="o">:</span> <span class="s2">"http://mtgimage.com/multiverseid/12414.jpg"</span><span class="p">,</span>
+        <span class="s2">"set_url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/sets/ULG"</span><span class="p">,</span>
+        <span class="s2">"store_url"</span><span class="o">:</span> <span class="s2">"http://store.tcgplayer.com/magic/urzas-legacy/about-face"</span>
+      <span class="p">}</span>
+    <span class="p">]</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+<h4>Card filtering</h4>
+<p>Cards can be filtering using query string parameters. Parameters with the
+<strong>same name</strong> are evaluated as OR statements. For example, the query below will
+find all red or blue rare cards in Unhinged.</p>
+<blockquote>
+<p>GET /mtg/cards?set=UNH&amp;color=red&amp;color=blue&amp;rarity=rare</p>
+</blockquote>
+<table><thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>type</code></td>
+<td><code>[]string</code></td>
+<td>Any valid card type. Possible values include <code>enchantment</code> and</td>
+</tr>
+<tr>
+<td><code>subtype</code></td>
+<td><code>[]string</code></td>
+<td>Any valid card subtype. Possible values include <code>zombie</code> and <code>tribal</code>.</td>
+</tr>
+<tr>
+<td><code>supertype</code></td>
+<td><code>[]string</code></td>
+<td>Any valid card supertype, such as <code>legendary</code></td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td><code>[]string</code></td>
+<td>A fuzzy match on a card's name</td>
+</tr>
+<tr>
+<td><code>oracle</code></td>
+<td><code>[]string</code></td>
+<td>A fuzzy match on a card's Oracle rules text</td>
+</tr>
+<tr>
+<td><code>set</code></td>
+<td><code>[]string</code></td>
+<td>A three letter identifier for a Magic set</td>
+</tr>
+<tr>
+<td><code>rarity</code></td>
+<td><code>[]string</code></td>
+<td>Select cards printed at this rarity. Options are <code>common</code>, <code>uncommon</code>, <code>rare</code> and <code>mythic</code></td>
+</tr>
+<tr>
+<td><code>color</code></td>
+<td><code>[]string</code></td>
+<td>Select cards of the chosen color</td>
+</tr>
+<tr>
+<td><code>multicolor</code></td>
+<td><code>bool</code></td>
+<td>Only show cards that are multicolored. Legal values are <code>true</code> and <code>false</code></td>
+</tr>
+<tr>
+<td><code>multiverseid</code></td>
+<td><code>[]string</code></td>
+<td>Select cards of that have at least one edition with the given Multiverse ID</td>
+</tr>
+<tr>
+<td><code>m</code></td>
+<td><code>[]string</code></td>
+<td>Shortcut for Multiverse ID</td>
+</tr>
+<tr>
+<td><code>format</code></td>
+<td><code>[]string</code></td>
+<td>Only show cards allowed in a specific format. Legal values are <code>vintage</code>, <code>legacy</code>, <code>modern</code>, <code>standard</code>, and <code>commander</code></td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>[]string</code></td>
+<td>Only show cards with the given status. Legal values are <code>legal</code>, <code>banned</code> or <code>restricted</code></td>
+</tr>
+</tbody></table>
+<h4>Get cards for a Multiverse ID</h4>
+<p>A specific print of a card or cards identified by it's <a href="http://gatherer.wizards.com/pages/Help.aspx">Multiverse
+ID</a>. By filtering on endpoint
+always returns an array of cards, as certain prints contain more than one card,
+such as the split card <a href="https://api.deckbrew.com/mtg/cards?multiverseid=369080">Turn //
+Burn</a>.</p>
+<h4>Search examples</h4>
+<p>All red or blue rares with "fire" in their name:</p>
+<p><a href="https://api.deckbrew.com/mtg/cards?color=red&amp;color=blue&amp;rarity=rare&amp;name=fire">https://api.deckbrew.com/mtg/cards?color=red&amp;color=blue&amp;rarity=rare&amp;name=fire</a></p>
+<p>All black zombies from Onslaught block:</p>
+<p><a href="https://api.deckbrew.com/mtg/cards?set=ons&amp;set=scg&amp;set=lgn&amp;subtype=zombie&amp;color=black">https://api.deckbrew.com/mtg/cards?set=ons&amp;set=scg&amp;set=lgn&amp;subtype=zombie&amp;color=black</a></p>
+<p>All cards that reference winning or lose the game</p>
+<p><a href="https://api.deckbrew.com/mtg/cards?oracle=win+the+game&amp;oracle=lose+the+game">https://api.deckbrew.com/mtg/cards?oracle=win+the+game&amp;oracle=lose+the+game</a></p>
+<h3>Get a single card</h3>
+<blockquote>
+<p>/mtg/cards/:id</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">{</span>
+  <span class="s2">"name"</span><span class="o">:</span> <span class="s2">"About Face"</span><span class="p">,</span>
+  <span class="s2">"id"</span><span class="o">:</span> <span class="s2">"about-face"</span><span class="p">,</span>
+  <span class="s2">"url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/cards/about-face"</span><span class="p">,</span>
+  <span class="s2">"store_url"</span><span class="o">:</span> <span class="s2">"http://store.tcgplayer.com/magic/urzas-legacy/about-face"</span><span class="p">,</span>
+  <span class="s2">"types"</span><span class="o">:</span> <span class="p">[</span>
+    <span class="s2">"instant"</span>
+  <span class="p">],</span>
+  <span class="s2">"colors"</span><span class="o">:</span> <span class="p">[</span>
+    <span class="s2">"red"</span>
+  <span class="p">],</span>
+  <span class="s2">"cmc"</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="s2">"cost"</span><span class="o">:</span> <span class="s2">"{R}"</span><span class="p">,</span>
+  <span class="s2">"text"</span><span class="o">:</span> <span class="s2">"Switch target creature's power and toughness until end of turn."</span><span class="p">,</span>
+  <span class="s2">"formats"</span><span class="o">:</span> <span class="p">{</span>
+    <span class="s2">"commander"</span><span class="o">:</span> <span class="s2">"legal"</span><span class="p">,</span>
+    <span class="s2">"legacy"</span><span class="o">:</span> <span class="s2">"legal"</span><span class="p">,</span>
+    <span class="s2">"vintage"</span><span class="o">:</span> <span class="s2">"legal"</span>
+  <span class="p">},</span>
+  <span class="s2">"editions"</span><span class="o">:</span> <span class="p">[</span>
+    <span class="p">{</span>
+      <span class="s2">"set"</span><span class="o">:</span> <span class="s2">"Urza's Legacy"</span><span class="p">,</span>
+      <span class="s2">"rarity"</span><span class="o">:</span> <span class="s2">"common"</span><span class="p">,</span>
+      <span class="s2">"artist"</span><span class="o">:</span> <span class="s2">"Melissa A. Benson"</span><span class="p">,</span>
+      <span class="s2">"multiverse_id"</span><span class="o">:</span> <span class="mi">12414</span><span class="p">,</span>
+      <span class="s2">"flavor"</span><span class="o">:</span> <span class="s2">"The overconfident are the most vulnerable."</span><span class="p">,</span>
+      <span class="s2">"number"</span><span class="o">:</span> <span class="s2">"73"</span><span class="p">,</span>
+      <span class="s2">"layout"</span><span class="o">:</span> <span class="s2">"normal"</span><span class="p">,</span>
+      <span class="s2">"price"</span><span class="o">:</span> <span class="p">{</span>
+          <span class="s2">"low"</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+          <span class="s2">"average"</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+          <span class="s2">"high"</span><span class="o">:</span> <span class="mi">0</span>
+      <span class="p">},</span>
+      <span class="s2">"url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/cards?multiverseid=12414"</span><span class="p">,</span>
+      <span class="s2">"image_url"</span><span class="o">:</span> <span class="s2">"http://mtgimage.com/multiverseid/12414.jpg"</span><span class="p">,</span>
+      <span class="s2">"set_url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/sets/ULG"</span><span class="p">,</span>
+      <span class="s2">"store_url"</span><span class="o">:</span> <span class="s2">"http://store.tcgplayer.com/magic/urzas-legacy/about-face"</span>
+    <span class="p">}</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3>Typeahead autocomplete for card search</h3>
+<blockquote>
+<p>/mtg/cards/typeahead</p>
+</blockquote>
+<p>This endpoint returns a list of 10 cards (the same format as the <code>/mtg/cards</code>
+endpoint) that match the beginning of the search term. This endpoint is great
+for building interactive autocomplete search for Magic cards. </p>
+<table><thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>q</code></td>
+<td><code>string</code></td>
+<td>Card name prefix search</td>
+</tr>
+</tbody></table>
+<h4>Examples</h4>
+<p>The first 10 cards that start with <code>Sele</code> sorted in alphabetical order.</p>
+<p><a href="https://api.deckbrew.com/mtg/cards/typeahead?q=sele">https://api.deckbrew.com/mtg/cards/typeahead?q=sele</a></p>
+<h2>Magic Sets</h2>
+<h3>List all sets</h3>
+<blockquote>
+<p>GET /mtg/sets</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">[</span>
+  <span class="p">{</span>
+    <span class="s2">"id"</span><span class="o">:</span> <span class="s2">"ARB"</span><span class="p">,</span>
+    <span class="s2">"name"</span><span class="o">:</span> <span class="s2">"Alara Reborn"</span><span class="p">,</span>
+    <span class="s2">"border"</span><span class="o">:</span> <span class="s2">"black"</span><span class="p">,</span>
+    <span class="s2">"type"</span><span class="o">:</span> <span class="s2">"expansion"</span><span class="p">,</span>
+    <span class="s2">"url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/sets/ARB"</span><span class="p">,</span>
+    <span class="s2">"cards_url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/cards?set=ARB"</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+<h3>Get a single set</h3>
+<blockquote>
+<p>GET /mtg/sets/:id</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">{</span>
+  <span class="s2">"id"</span><span class="o">:</span> <span class="s2">"ARB"</span><span class="p">,</span>
+  <span class="s2">"name"</span><span class="o">:</span> <span class="s2">"Alara Reborn"</span><span class="p">,</span>
+  <span class="s2">"border"</span><span class="o">:</span> <span class="s2">"black"</span><span class="p">,</span>
+  <span class="s2">"type"</span><span class="o">:</span> <span class="s2">"expansion"</span><span class="p">,</span>
+  <span class="s2">"url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/sets/ARB"</span><span class="p">,</span>
+  <span class="s2">"cards_url"</span><span class="o">:</span> <span class="s2">"https://api.deckbrew.com/mtg/cards?set=ARB"</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2>Magic Types and Colors</h2>
+<p>These endpoints provide a list of possible values for specific search terms.</p>
+<h3>List all types</h3>
+<blockquote>
+<p>GET /mtg/types</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">[</span>
+  <span class="s2">"artifact"</span><span class="p">,</span>
+  <span class="s2">"creature"</span><span class="p">,</span>
+  <span class="s2">"enchantment"</span><span class="p">,</span>
+  <span class="s2">"instant"</span><span class="p">,</span>
+  <span class="s2">"land"</span><span class="p">,</span>
+  <span class="s2">"phenomenon"</span><span class="p">,</span>
+  <span class="s2">"plane"</span><span class="p">,</span>
+  <span class="s2">"planeswalker"</span><span class="p">,</span>
+  <span class="s2">"scheme"</span><span class="p">,</span>
+  <span class="s2">"sorcery"</span><span class="p">,</span>
+  <span class="s2">"tribal"</span><span class="p">,</span>
+  <span class="s2">"vanguard"</span>
+<span class="p">]</span>
+</code></pre></div>
+<h3>List all supertypes</h3>
+<blockquote>
+<p>GET /mtg/supertypes</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">[</span>
+  <span class="s2">"basic"</span><span class="p">,</span>
+  <span class="s2">"legendary"</span><span class="p">,</span>
+  <span class="s2">"ongoing"</span><span class="p">,</span>
+  <span class="s2">"snow"</span><span class="p">,</span>
+  <span class="s2">"world"</span>
+<span class="p">]</span>
+</code></pre></div>
+<h3>List all subtypes</h3>
+<blockquote>
+<p>GET /mtg/subtypes</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">[</span>
+  <span class="s2">"advisor"</span><span class="p">,</span>
+  <span class="s2">"ajani"</span><span class="p">,</span>
+  <span class="s2">"alara"</span><span class="p">,</span>
+  <span class="s2">"ally"</span><span class="p">,</span>
+  <span class="s2">"angel"</span><span class="p">,</span>
+  <span class="s2">"anteater"</span><span class="p">,</span>
+<span class="p">]</span>
+</code></pre></div>
+<h3>List all colors</h3>
+<blockquote>
+<p>GET /mtg/colors</p>
+</blockquote>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="p">[</span>
+  <span class="s2">"black"</span><span class="p">,</span>
+  <span class="s2">"blue"</span><span class="p">,</span>
+  <span class="s2">"green"</span><span class="p">,</span>
+  <span class="s2">"red"</span><span class="p">,</span>
+  <span class="s2">"white"</span>
+<span class="p">]</span>
+</code></pre></div>
+</div>
+</div>
+<div class="footer">
+<p class="legal">The textual information presented through this website 
+and API about Magic: The Gathering is copyrighted by Wizards of the 
+Coast.</p>
+<p class="legal">This website and API are not produced, endorsed, supported, or affiliated with Wizards of the Coast.</p>
+</div>
+</div>
+
+
+</body></html>

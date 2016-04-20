@@ -13,6 +13,7 @@ type Config struct {
 
 	HostImage string
 	HostAPI   string
+	HostWeb   string
 }
 
 func env(key, empty string) string {
@@ -42,5 +43,6 @@ func FromEnv() (*Config, error) {
 		Port:      port,
 		HostImage: env("DECKBREW_IMAGE_HOST", "deckbrew.image:"+port),
 		HostAPI:   env("DECKBREW_API_HOST", "deckbrew.api:"+port),
+		HostWeb:   env("DECKBREW_WEB_HOST", "deckbrew.web:"+port),
 	}, nil
 }

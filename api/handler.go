@@ -55,6 +55,22 @@ func imageBase() string {
 	}
 }
 
+func webBase() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+	host := os.Getenv("DECKBREW_WEB_HOST")
+	if host == "" {
+		host = "deckbrew.web:" + port
+	}
+	if strings.Contains(host, ":") {
+		return "http://" + host
+	} else {
+		return "https://" + host
+	}
+}
+
 func ReverseCard(id string) string {
 	return fmt.Sprintf("%s/mtg/cards/%s", apiBase(), id)
 }
@@ -69,6 +85,10 @@ func ReverseSet(id string) string {
 
 func MTGImageURL(id int) string {
 	return fmt.Sprintf("%s/mtg/multiverseid/%d.jpg", imageBase(), id)
+}
+
+func DeckbrewURL(id int) string {
+	return fmt.Sprintf("%s/mtg/cards/%d", webBase(), id)
 }
 
 func Slug(name string) string {
@@ -152,6 +172,7 @@ func (c *Card) Fill() {
 		e.Href = ReverseEdition(e.MultiverseId)
 		e.SetUrl = ReverseSet(e.SetId)
 		e.ImageUrl = MTGImageURL(e.MultiverseId)
+		e.HTMLUrl = DeckbrewURL(e.MultiverseId)
 		e.StoreUrl = TCGEditionURL(c, e)
 		e.Price = &Price{
 			Low:     0,
@@ -178,6 +199,7 @@ type Edition struct {
 	ImageUrl     string `json:"image_url,omitempty"`
 	SetUrl       string `json:"set_url,omitempty"`
 	StoreUrl     string `json:"store_url"`
+	HTMLUrl      string `json:"html_url"`
 }
 
 type Price struct {
