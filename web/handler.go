@@ -48,14 +48,14 @@ type CardPage struct {
 func (web *Web) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(pat.Param(ctx, "id"))
 	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
 	u, _ := url.Parse(fmt.Sprintf("?multiverseid=%d", id))
 	cond, err, _ := api.ParseSearch(u)
 	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	cards, err := api.FetchCards(ctx, web.db, cond, 0)
@@ -69,7 +69,7 @@ func (web *Web) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	if len(cards) == 0 {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "No cards found", http.StatusNotFound)
 		return
 	}
 
