@@ -1,2 +1,0 @@
-ALTER TABLE sets ALTER COLUMN id TYPE varchar(10);
-ALTER TABLE cards ALTER COLUMN sets TYPE varchar(10)[];

@@ -1,0 +1,5 @@
+{
+	"ImportPath": "github.com/kyleconroy/deckbrew-image",
+	"GoVersion": "go1.3",
+	"Deps": []
+}

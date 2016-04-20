@@ -1,1 +1,1 @@
-web: deckbrew-api serve
+web: deckbrew serve
