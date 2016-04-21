@@ -78,7 +78,7 @@ func (a *API) apiBase() string {
 }
 
 func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	cond, err, errors := ParseSearch(r.URL)
+	s, err, errors := ParseSearch(r.URL)
 	if err != nil {
 		JSON(w, http.StatusBadRequest, Errors(errors...))
 		return
@@ -88,7 +88,7 @@ func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Re
 		JSON(w, http.StatusBadRequest, Errors(errors...))
 		return
 	}
-	cards, err := a.c.GetCards(ctx, cond, page)
+	cards, err := a.c.GetCards(ctx, s, page)
 	if err != nil {
 		JSON(w, http.StatusInternalServerError, Errors("Error fetching cards"))
 		return
@@ -173,6 +173,7 @@ func New(cfg *config.Config, client brew.Reader) http.Handler {
 	mux.UseC(Recover)
 	mux.UseC(Tracing)
 	mux.UseC(Headers)
+	mux.UseC(Recover)
 
 	mux.HandleFuncC(pat.Get("/mtg/cards"), app.HandleCards)
 	mux.HandleFuncC(pat.Get("/mtg/cards/typeahead"), app.HandleTypeahead)

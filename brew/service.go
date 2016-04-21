@@ -9,7 +9,7 @@ import (
 )
 
 type Reader interface {
-	GetCards(context.Context, Condition, int) ([]Card, error)
+	GetCards(context.Context, Search, int) ([]Card, error)
 	GetCardsByName(context.Context, string) ([]Card, error)
 	GetCard(context.Context, string) (Card, error)
 	GetRandomCardID(context.Context) (string, error)
@@ -32,6 +32,22 @@ func toUniqueLower(things []string) []string {
 	}
 	sort.Strings(sorted)
 	return sorted
+}
+
+type Search struct {
+	Colors            []string
+	Formats           []string
+	IncludeMulticolor bool
+	Multicolor        bool
+	MultiverseIDs     []string
+	Names             []string
+	Rarities          []string
+	Sets              []string
+	Status            []string
+	Subtypes          []string
+	Supertypes        []string
+	Rules             []string
+	Types             []string
 }
 
 type Card struct {

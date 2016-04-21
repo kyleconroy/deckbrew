@@ -28,6 +28,7 @@ func toLower(strs []string) []string {
 type Search struct {
 	Conditions []brew.Condition
 	Args       url.Values
+	Search     brew.Search
 }
 
 func (s *Search) extractPattern(searchTerm, key string) error {
@@ -50,39 +51,42 @@ func (s *Search) extractPattern(searchTerm, key string) error {
 	return nil
 }
 
-func (s *Search) extractStrings(searchTerm, key string, allowed map[string]bool) error {
-	items := s.Args[searchTerm]
+func extractPattern(args url.Values, key string) ([]string, error) {
+	items := []string{}
+	for _, oracle := range args[key] {
+		if oracle == "" {
+			continue
+		}
+		if strings.ContainsAny(oracle, "%_") {
+			return items, fmt.Errorf("Search string can't contain '%%' or '_'")
+		}
+		items = append(items, "%"+oracle+"%")
+	}
+	return items, nil
+}
+
+func extractStrings(args url.Values, key string, allowed map[string]bool) ([]string, error) {
+	items := args[key]
 
 	for _, t := range items {
 		if !allowed[t] {
-			return fmt.Errorf("The %s '%s' is not recognized", key, t)
+			return items, fmt.Errorf("The %s '%s' is not recognized", key, t)
 		}
 	}
 
-	return s.addQuery(key, items)
+	return items, nil
 }
 
-func (s *Search) addQuery(key string, items []string) error {
-	if len(items) == 0 {
-		return nil
-	}
-
-	if len(items) == 1 {
-		s.Conditions = append(s.Conditions, brew.Contains(key, CreateStringArray(items)))
-	} else {
-		s.Conditions = append(s.Conditions, brew.Overlap(key, CreateStringArray(items)))
-	}
-
-	return nil
-}
-
-func (s *Search) ParseMulticolor() error {
-	switch s.Args.Get("multicolor") {
+func ParseMulticolor(s *brew.Search, args url.Values) error {
+	switch args.Get("multicolor") {
 	case "true":
-		s.Conditions = append(s.Conditions, brew.Eq("multicolor", "true"))
+		s.IncludeMulticolor = true
+		s.Multicolor = true
 	case "false":
-		s.Conditions = append(s.Conditions, brew.Eq("multicolor", "false"))
+		s.IncludeMulticolor = true
+		s.Multicolor = false
 	case "":
+		s.IncludeMulticolor = false
 		return nil
 	default:
 		return fmt.Errorf("Multicolor should be either 'true' or 'false'")
@@ -90,61 +94,70 @@ func (s *Search) ParseMulticolor() error {
 	return nil
 }
 
-func (s *Search) ParseMultiverseId() error {
-	ids := s.Args["multiverseid"][:]
-	for _, m := range s.Args["m"] {
+func ParseMultiverseIDs(s *brew.Search, args url.Values) error {
+	ids := args["multiverseid"][:]
+	for _, m := range args["m"] {
 		ids = append(ids, m)
 	}
-	return s.addQuery("mids", ids)
+	s.MultiverseIDs = ids
+	return nil
 }
 
-func (s *Search) ParseSupertypes() error {
-	return s.extractStrings("supertype", "supertypes", map[string]bool{
+func ParseSupertypes(s *brew.Search, args url.Values) (err error) {
+	s.Supertypes, err = extractStrings(args, "supertype", map[string]bool{
 		"legendary": true,
 		"basic":     true,
 		"world":     true,
 		"snow":      true,
 		"ongoing":   true,
 	})
+	return
 }
 
-func (s *Search) ParseSubtypes() error {
-	return s.addQuery("subtypes", s.Args["subtype"])
+// TODO: Add validation
+func ParseSubtypes(s *brew.Search, args url.Values) error {
+	s.Subtypes = toLower(args["subtype"])
+	return nil
 }
 
-func (s *Search) ParseSets() error {
-	return s.addQuery("sets", toLower(s.Args["set"]))
+// TODO: Add validation
+func ParseSets(s *brew.Search, args url.Values) error {
+	s.Sets = toLower(args["set"])
+	return nil
 }
 
-func (s *Search) ParseColors() error {
-	return s.extractStrings("color", "colors", map[string]bool{
+func ParseColors(s *brew.Search, args url.Values) (err error) {
+	s.Colors, err = extractStrings(args, "color", map[string]bool{
 		"red":   true,
 		"black": true,
 		"blue":  true,
 		"white": true,
 		"green": true,
 	})
+	return
 }
 
-func (s *Search) ParseStatus() error {
-	return s.extractStrings("status", "status", map[string]bool{
+func ParseStatus(s *brew.Search, args url.Values) (err error) {
+	s.Status, err = extractStrings(args, "status", map[string]bool{
 		"legal":      true,
 		"banned":     true,
 		"restricted": true,
 	})
+	return
 }
 
-func (s *Search) ParseFormat() error {
-	return s.extractStrings("format", "formats", map[string]bool{
+func ParseFormat(s *brew.Search, args url.Values) (err error) {
+	s.Formats, err = extractStrings(args, "format", map[string]bool{
 		"commander": true,
 		"standard":  true,
 		"modern":    true,
 		"vintage":   true,
 		"legacy":    true,
 	})
+	return
 }
-func (s *Search) ParseRarity() error {
-	return s.extractStrings("rarity", "rarities", map[string]bool{
+func ParseRarity(s *brew.Search, args url.Values) (err error) {
+	s.Rarities, err = extractStrings(args, "rarity", map[string]bool{
 		"common":   true,
 		"uncommon": true,
 		"rare":     true,
@@ -152,10 +165,11 @@ func (s *Search) ParseRarity() error {
 		"special":  true,
 		"basic":    true,
 	})
+	return
 }
 
-func (s *Search) ParseTypes() error {
-	return s.extractStrings("type", "types", map[string]bool{
+func ParseTypes(s *brew.Search, args url.Values) (err error) {
+	s.Types, err = extractStrings(args, "type", map[string]bool{
 		"creature":     true,
 		"land":         true,
 		"tribal":       true,
@@ -170,45 +184,49 @@ func (s *Search) ParseTypes() error {
 		"plane":        true,
 		"scheme":       true,
 	})
+	return
 }
 
-func (s *Search) ParseName() error {
-	return s.extractPattern("name", "name")
+func ParseName(s *brew.Search, args url.Values) (err error) {
+	s.Names, err = extractPattern(args, "name")
+	return
 }
 
-func (s *Search) ParseText() error {
-	return s.extractPattern("rules", "oracle")
+func ParseRules(s *brew.Search, args url.Values) (err error) {
+	s.Rules, err = extractPattern(args, "oracle")
+	return
 }
 
-func ParseSearch(u *url.URL) (brew.Condition, error, []string) {
-	search := Search{Args: u.Query(), Conditions: []brew.Condition{}}
+func ParseSearch(u *url.URL) (brew.Search, error, []string) {
+	args := u.Query()
+	search := brew.Search{}
 
-	errs := []error{
-		search.ParseMulticolor(),
-		search.ParseRarity(),
-		search.ParseTypes(),
-		search.ParseSupertypes(),
-		search.ParseColors(),
-		search.ParseSubtypes(),
-		search.ParseFormat(),
-		search.ParseStatus(),
-		search.ParseMultiverseId(),
-		search.ParseSets(),
-		search.ParseText(),
-		search.ParseName(),
+	funcs := []func(*brew.Search, url.Values) error{
+		ParseMulticolor,
+		ParseRarity,
+		ParseTypes,
+		ParseSupertypes,
+		ParseColors,
+		ParseSubtypes,
+		ParseFormat,
+		ParseStatus,
+		ParseMultiverseIDs,
+		ParseSets,
+		ParseName,
+		ParseRules,
 	}
 
 	var err error
 	results := []string{}
 
-	for _, e := range errs {
-		if e != nil {
+	for _, fun := range funcs {
+		if e := fun(&search, args); e != nil {
 			results = append(results, e.Error())
 			err = fmt.Errorf("Errors while processing the search")
 		}
 	}
 
-	return brew.And(search.Conditions...), err, results
+	return search, err, results
 }
 
 func CardsPaging(u *url.URL) (int, error) {

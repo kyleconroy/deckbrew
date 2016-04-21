@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -10,6 +12,7 @@ import (
 	"goji.io/middleware"
 	"goji.io/pat"
 	"golang.org/x/net/context"
+	stack "gopkg.in/stack.v1"
 )
 
 func Headers(next goji.Handler) goji.Handler {
@@ -67,6 +70,7 @@ func Recover(next goji.Handler) goji.Handler {
 	return goji.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
+				log.Println(err, fmt.Sprintf("%+v", stack.Trace()))
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 			}
 		}()

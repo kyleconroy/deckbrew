@@ -68,6 +68,11 @@
 			"Rev": "0cb26f788dd4625d1956c6fd97ffc4c90669d129"
 		},
 		{
+			"ImportPath": "gopkg.in/stack.v1",
+			"Comment": "v1.5.0",
+			"Rev": "ac4c579c437a23e1a15814c867ccb82122fb383b"
+		},
+		{
 			"ImportPath": "stackmachine.com/cql",
 			"Rev": "fdd63775af1ab26c46ce125dbb568120828e5c07"
 		},

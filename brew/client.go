@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/kyleconroy/deckbrew/config"
@@ -48,6 +49,26 @@ const queryRandomCard = `
 SELECT id FROM cards ORDER BY RANDOM() LIMIT 1
 `
 
+const queryCards = `
+SELECT record FROM cards
+WHERE
+  ($1 OR multicolor = $2) AND
+  ($3 OR rarities && $4) AND
+  ($5 OR types && $6) AND 
+  ($7 OR supertypes && $8) AND 
+  ($9 OR colors && $10) AND 
+  ($11 OR subtypes && $12) AND 
+  ($13 OR formats && $14) AND 
+  ($15 OR status && $16) AND 
+  ($17 OR mids && $18) AND 
+  ($19 OR sets && $20) AND 
+  ($21 OR name ILIKE ANY ($22)) AND
+  ($23 OR rules ILIKE ANY ($24))
+ORDER BY name ASC
+LIMIT 100
+OFFSET 0
+`
+
 type client struct {
 	db     *cql.DB
 	router router
@@ -57,6 +78,7 @@ type client struct {
 	stmtGetSets       *cql.Stmt
 	stmtTypeahead     *cql.Stmt
 	stmtGetCard       *cql.Stmt
+	stmtGetCards      *cql.Stmt
 	stmtGetTypes      *cql.Stmt
 	stmtGetSubtypes   *cql.Stmt
 	stmtGetSupertypes *cql.Stmt
@@ -75,6 +97,7 @@ func NewReader(cfg *config.Config) (Reader, error) {
 		{&c.stmtGetSet, querySet},
 		{&c.stmtGetSets, querySets},
 		{&c.stmtGetCard, queryCard},
+		{&c.stmtGetCards, queryCards},
 		{&c.stmtTypeahead, queryTypeahead},
 		{&c.stmtGetColors, queryColors},
 		{&c.stmtGetTypes, queryTypes},
@@ -161,22 +184,31 @@ func (c *client) GetCardsByName(ctx context.Context, search string) ([]Card, err
 	return scanCards(rows, c.router)
 }
 
-func (c *client) GetCards(ctx context.Context, cond Condition, page int) ([]Card, error) {
-	// TODO: Somehow turn this into a prepared statement
-	query := Select("record").From("cards").Where(cond).OrderBy("name", true)
-	limit := query.Limit(100).Offset(page * 100)
+func sarray(values []string) string {
+	return "{" + strings.Join(values, ",") + "}"
+}
 
-	ql, items, err := limit.ToSql()
-
-	if err != nil {
-		return []Card{}, err
-	}
-
-	rows, err := c.db.QueryC(ctx, ql, items...)
+func (c *client) GetCards(ctx context.Context, s Search, page int) ([]Card, error) {
+	rows, err := c.stmtGetCards.QueryC(ctx,
+		// Multicolor, ignored by default
+		!s.IncludeMulticolor, s.Multicolor,
+		len(s.Rarities) == 0, sarray(s.Rarities),
+		len(s.Types) == 0, sarray(s.Types),
+		len(s.Supertypes) == 0, sarray(s.Supertypes),
+		len(s.Colors) == 0, sarray(s.Colors),
+		len(s.Subtypes) == 0, sarray(s.Subtypes),
+		len(s.Formats) == 0, sarray(s.Formats),
+		len(s.Status) == 0, sarray(s.Status),
+		len(s.MultiverseIDs) == 0, sarray(s.MultiverseIDs),
+		len(s.Sets) == 0, sarray(s.Sets),
+		len(s.Names) == 0, sarray(s.Names),
+		len(s.Rules) == 0, sarray(s.Rules),
+	)
 	if err == sql.ErrNoRows {
 		return []Card{}, nil
 	}
 	if err != nil {
+		log.Println(err)
 		return []Card{}, err
 	}
 
