@@ -88,7 +88,9 @@ func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Re
 		JSON(w, http.StatusBadRequest, Errors(errors...))
 		return
 	}
-	cards, err := a.c.GetCards(ctx, s, page)
+	s.Limit = 100
+	s.Offset = page * s.Limit
+	cards, err := a.c.GetCards(ctx, s)
 	if err != nil {
 		JSON(w, http.StatusInternalServerError, Errors("Error fetching cards"))
 		return

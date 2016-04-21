@@ -9,46 +9,12 @@ import (
 	"github.com/kyleconroy/deckbrew/brew"
 )
 
-func toUpper(strs []string) []string {
-	uppers := []string{}
-	for _, s := range strs {
-		uppers = append(uppers, strings.ToUpper(s))
-	}
-	return uppers
-}
-
 func toLower(strs []string) []string {
 	downers := []string{}
 	for _, s := range strs {
 		downers = append(downers, strings.ToLower(s))
 	}
 	return downers
-}
-
-type Search struct {
-	Conditions []brew.Condition
-	Args       url.Values
-	Search     brew.Search
-}
-
-func (s *Search) extractPattern(searchTerm, key string) error {
-	or := []brew.Condition{}
-
-	for _, oracle := range s.Args[key] {
-		if oracle == "" {
-			continue
-		}
-		if strings.ContainsAny(oracle, "%_") {
-			return fmt.Errorf("Search string can't contain '%%' or '_'")
-		}
-		or = append(or, brew.ILike(searchTerm, "%"+oracle+"%"))
-	}
-
-	if len(or) > 0 {
-		s.Conditions = append(s.Conditions, brew.Or(or...))
-	}
-
-	return nil
 }
 
 func extractPattern(args url.Values, key string) ([]string, error) {
@@ -225,6 +191,9 @@ func ParseSearch(u *url.URL) (brew.Search, error, []string) {
 			err = fmt.Errorf("Errors while processing the search")
 		}
 	}
+
+	// By default, include 100 cards
+	search.Limit = 100
 
 	return search, err, results
 }

@@ -53,12 +53,12 @@ func (web *Web) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	u, _ := url.Parse(fmt.Sprintf("?multiverseid=%d", id))
-	cond, err, _ := api.ParseSearch(u)
+	s, err, _ := api.ParseSearch(u)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	cards, err := web.r.GetCards(ctx, cond, 0)
+	cards, err := web.r.GetCards(ctx, s)
 	if err != nil {
 		http.Error(w, "Error", http.StatusInternalServerError)
 		return

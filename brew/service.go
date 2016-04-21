@@ -9,7 +9,7 @@ import (
 )
 
 type Reader interface {
-	GetCards(context.Context, Search, int) ([]Card, error)
+	GetCards(context.Context, Search) ([]Card, error)
 	GetCardsByName(context.Context, string) ([]Card, error)
 	GetCard(context.Context, string) (Card, error)
 	GetRandomCardID(context.Context) (string, error)
@@ -48,6 +48,8 @@ type Search struct {
 	Supertypes        []string
 	Rules             []string
 	Types             []string
+	Limit             int
+	Offset            int
 }
 
 type Card struct {

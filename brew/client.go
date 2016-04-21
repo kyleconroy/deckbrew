@@ -65,8 +65,8 @@ WHERE
   ($21 OR name ILIKE ANY ($22)) AND
   ($23 OR rules ILIKE ANY ($24))
 ORDER BY name ASC
-LIMIT 100
-OFFSET 0
+LIMIT $25
+OFFSET $26
 `
 
 type client struct {
@@ -188,7 +188,7 @@ func sarray(values []string) string {
 	return "{" + strings.Join(values, ",") + "}"
 }
 
-func (c *client) GetCards(ctx context.Context, s Search, page int) ([]Card, error) {
+func (c *client) GetCards(ctx context.Context, s Search) ([]Card, error) {
 	rows, err := c.stmtGetCards.QueryC(ctx,
 		// Multicolor, ignored by default
 		!s.IncludeMulticolor, s.Multicolor,
@@ -203,6 +203,7 @@ func (c *client) GetCards(ctx context.Context, s Search, page int) ([]Card, erro
 		len(s.Sets) == 0, sarray(s.Sets),
 		len(s.Names) == 0, sarray(s.Names),
 		len(s.Rules) == 0, sarray(s.Rules),
+		s.Limit, s.Offset,
 	)
 	if err == sql.ErrNoRows {
 		return []Card{}, nil
