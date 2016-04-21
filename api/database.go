@@ -11,5 +11,5 @@ func MigrateDatabase() error {
 	if err != nil {
 		return err
 	}
-	return migrator.Run(cfg.DB.DB, "migrations")
+	return migrator.Run(cfg.DB.DB, "api/migrations")
 }

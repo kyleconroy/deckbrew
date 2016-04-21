@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 
 	"golang.org/x/net/context"
@@ -23,7 +22,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func CreateStringArray(values []string) string {
+func sarray(values []string) string {
 	return "{" + strings.Join(values, ",") + "}"
 }
 
@@ -34,34 +33,6 @@ func ToSortedLower(things []string) []string {
 	}
 	sort.Strings(sorted)
 	return sorted
-}
-
-func Insert(columns []string, table string) string {
-	values := []string{}
-
-	for i := range columns {
-		values = append(values, "$"+strconv.Itoa(i+1))
-	}
-
-	c := strings.Join(columns, ",")
-	v := strings.Join(values, ",")
-
-	return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, c, v)
-}
-
-func Update(columns []string, table string) string {
-	values := []string{}
-	last := 0
-
-	for i := range columns {
-		values = append(values, "$"+strconv.Itoa(i+1))
-		last = i + 1
-	}
-
-	c := strings.Join(columns, ",")
-	v := strings.Join(values, ",")
-
-	return fmt.Sprintf("UPDATE %s SET (%s) = (%s) WHERE id = $%d", table, c, v, last+1)
 }
 
 func transformRarity(rarity string) string {
@@ -214,6 +185,35 @@ func fetchCardIDs(ctx context.Context, db *cql.DB) ([]string, error) {
 	return ids, rows.Err()
 }
 
+const queryInsertSet = `
+INSERT INTO sets (id, name, border, type) VALUES ($1, $2, $3, $4)
+`
+
+const queryInsertCard = `
+INSERT INTO cards (
+  id, name, record, rules, mana_cost, cmc,
+  power, toughness, loyalty, multicolor, rarities,
+  types, subtypes, supertypes, colors, sets,
+  formats, status, mids
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+  $11, $12, $13, $14, $15, $16, $17, $18, $19
+)
+`
+
+const queryUpdateCard = `
+UPDATE cards SET (
+  name, record, rules, mana_cost, cmc,
+  power, toughness, loyalty, multicolor, rarities,
+  types, subtypes, supertypes, colors, sets,
+  formats, status, mids
+) = (
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+  $11, $12, $13, $14, $15, $16, $17, $18
+)
+WHERE id = $19
+`
+
 func CreateCollection(db *cql.DB, r brew.Reader, collection MTGCollection) error {
 	ctx := context.TODO()
 	sets, cards := TransformCollection(collection)
@@ -237,16 +237,13 @@ func CreateCollection(db *cql.DB, r brew.Reader, collection MTGCollection) error
 		if existingSet(currentSets, s.Id) {
 			continue
 		}
-		_, err := tx.Exec("INSERT INTO sets (id, name, border, type) VALUES ($1, $2, $3, $4)",
-			s.Id, s.Name, s.Border, s.Type)
+		_, err := tx.Exec(queryInsertSet, s.Id, s.Name, s.Border, s.Type)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("error intserting set %+v %s", s, err)
 		}
 	}
 
-	// TODO: The code below won't handle reprints, as we won't update the card record
-	// when it's been printed in a new set. Figure this out some how
 	i := 0
 	for _, c := range cards {
 		if i >= 1000 {
@@ -257,30 +254,24 @@ func CreateCollection(db *cql.DB, r brew.Reader, collection MTGCollection) error
 			tx.Rollback()
 			return err
 		}
-		columns := []string{
-			"id", "name", "record", "rules", "mana_cost", "cmc",
-			"power", "toughness", "loyalty", "multicolor", "rarities",
-			"types", "subtypes", "supertypes", "colors", "sets",
-			"formats", "status", "mids",
-		}
 		if existingCard(currentCards, c.Id) {
-			q := Update(columns[1:], "cards")
-			_, err = tx.Exec(q, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
+			_, err = tx.Exec(queryUpdateCard,
+				c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
 				c.Power, c.Toughness, c.Loyalty, c.Multicolor(),
-				CreateStringArray(c.Rarities()), CreateStringArray(c.Types),
-				CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes),
-				CreateStringArray(c.Colors), CreateStringArray(c.Sets()),
-				CreateStringArray(c.Formats()), CreateStringArray(c.Status()),
-				CreateStringArray(c.MultiverseIds()), c.Id)
+				sarray(c.Rarities()), sarray(c.Types),
+				sarray(c.Subtypes), sarray(c.Supertypes),
+				sarray(c.Colors), sarray(c.Sets()),
+				sarray(c.Formats()), sarray(c.Status()),
+				sarray(c.MultiverseIds()), c.Id)
 		} else {
-			q := Insert(columns, "cards")
-			_, err = tx.Exec(q, c.Id, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
+			_, err = tx.Exec(queryInsertCard,
+				c.Id, c.Name, blob, c.Text, c.ManaCost, c.ConvertedCost,
 				c.Power, c.Toughness, c.Loyalty, c.Multicolor(),
-				CreateStringArray(c.Rarities()), CreateStringArray(c.Types),
-				CreateStringArray(c.Subtypes), CreateStringArray(c.Supertypes),
-				CreateStringArray(c.Colors), CreateStringArray(c.Sets()),
-				CreateStringArray(c.Formats()), CreateStringArray(c.Status()),
-				CreateStringArray(c.MultiverseIds()))
+				sarray(c.Rarities()), sarray(c.Types),
+				sarray(c.Subtypes), sarray(c.Supertypes),
+				sarray(c.Colors), sarray(c.Sets()),
+				sarray(c.Formats()), sarray(c.Status()),
+				sarray(c.MultiverseIds()))
 		}
 		if err != nil {
 			tx.Rollback()

@@ -19,7 +19,6 @@ import (
 	"goji.io/pat"
 )
 
-// XXX: Use the config instead
 func Slug(name string) string {
 	re := regexp.MustCompile(`[,.'"?:()]`)
 	d := strings.Replace(strings.ToLower(name), " ", "-", -1)
@@ -101,7 +100,7 @@ func (a *API) HandleRandomCard(ctx context.Context, w http.ResponseWriter, r *ht
 		JSON(w, http.StatusInternalServerError, Errors("Can't connect to database"))
 	default:
 		url := "/mtg/cards/" + id
-		http.Redirect(w, r, url)
+		http.Redirect(w, r, url, http.StatusFound)
 		fmt.Fprintf(w, `["`+url+`"]`)
 	}
 }
