@@ -62,3 +62,14 @@ func Tracing(next goji.Handler) goji.Handler {
 		span.SetTag("http/status_code", strconv.Itoa(sw.status))
 	})
 }
+
+func Recover(next goji.Handler) goji.Handler {
+	return goji.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTPC(ctx, w, r)
+	})
+}

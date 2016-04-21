@@ -11,12 +11,14 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/context"
 
 	"stackmachine.com/cql"
 
+	"github.com/kyleconroy/deckbrew/brew"
 	"github.com/kyleconroy/deckbrew/config"
 	_ "github.com/lib/pq"
 )
@@ -34,17 +36,32 @@ func ToSortedLower(things []string) []string {
 	return sorted
 }
 
-func ToUniqueLower(things []string) []string {
-	seen := map[string]bool{}
-	sorted := []string{}
-	for _, thing := range things {
-		if _, found := seen[thing]; !found {
-			sorted = append(sorted, strings.ToLower(thing))
-			seen[thing] = true
-		}
+func Insert(columns []string, table string) string {
+	values := []string{}
+
+	for i := range columns {
+		values = append(values, "$"+strconv.Itoa(i+1))
 	}
-	sort.Strings(sorted)
-	return sorted
+
+	c := strings.Join(columns, ",")
+	v := strings.Join(values, ",")
+
+	return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, c, v)
+}
+
+func Update(columns []string, table string) string {
+	values := []string{}
+	last := 0
+
+	for i := range columns {
+		values = append(values, "$"+strconv.Itoa(i+1))
+		last = i + 1
+	}
+
+	c := strings.Join(columns, ",")
+	v := strings.Join(values, ",")
+
+	return fmt.Sprintf("UPDATE %s SET (%s) = (%s) WHERE id = $%d", table, c, v, last+1)
 }
 
 func transformRarity(rarity string) string {
@@ -59,8 +76,8 @@ func transformRarity(rarity string) string {
 	}
 }
 
-func TransformEdition(s MTGSet, c MTGCard) Edition {
-	return Edition{
+func TransformEdition(s MTGSet, c MTGCard) brew.Edition {
+	return brew.Edition{
 		Set:          s.Name,
 		SetId:        s.Code,
 		Flavor:       c.Flavor,
@@ -76,8 +93,8 @@ func TransformEdition(s MTGSet, c MTGCard) Edition {
 }
 
 // FIXME: Add released dates
-func TransformSet(s MTGSet) Set {
-	return Set{
+func TransformSet(s MTGSet) brew.Set {
+	return brew.Set{
 		Name:   s.Name,
 		Id:     s.Code,
 		Border: s.Border,
@@ -85,8 +102,8 @@ func TransformSet(s MTGSet) Set {
 	}
 }
 
-func TransformCard(c MTGCard) Card {
-	return Card{
+func TransformCard(c MTGCard) brew.Card {
+	return brew.Card{
 		Name:          c.Name,
 		Id:            Slug(c.Name),
 		Text:          c.Text,
@@ -103,11 +120,11 @@ func TransformCard(c MTGCard) Card {
 	}
 }
 
-func TransformCollection(collection MTGCollection) ([]Set, []Card) {
-	cards := []Card{}
-	ids := map[string]Card{}
-	editions := []Edition{}
-	sets := []Set{}
+func TransformCollection(collection MTGCollection) ([]brew.Set, []brew.Card) {
+	cards := []brew.Card{}
+	ids := map[string]brew.Card{}
+	editions := []brew.Edition{}
+	sets := []brew.Set{}
 
 	for _, set := range collection {
 		if strings.HasPrefix(set.Name, "p") {
@@ -160,7 +177,7 @@ func TransformLegalities(lgs MTGLegalities) map[string]string {
 	return formats
 }
 
-func existingSet(sets []Set, id string) bool {
+func existingSet(sets []brew.Set, id string) bool {
 	for _, cs := range sets {
 		if cs.Id == id {
 			return true
@@ -178,17 +195,36 @@ func existingCard(ids []string, id string) bool {
 	return false
 }
 
-func CreateCollection(db *cql.DB, collection MTGCollection) error {
+func fetchCardIDs(ctx context.Context, db *cql.DB) ([]string, error) {
+	ids := []string{}
+
+	rows, err := db.QueryC(ctx, "SELECT id FROM cards")
+	if err != nil {
+		return ids, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return ids, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func CreateCollection(db *cql.DB, r brew.Reader, collection MTGCollection) error {
 	ctx := context.TODO()
 	sets, cards := TransformCollection(collection)
 
 	// Load the current cards and sets
-	currentSets, err := FetchSets(ctx, db)
+	currentSets, err := r.GetSets(ctx)
 	if err != nil {
 		return err
 	}
 
-	currentCards, err := FetchCardIDs(ctx, db)
+	currentCards, err := fetchCardIDs(ctx, db)
 	if err != nil {
 		return err
 	}
@@ -308,6 +344,10 @@ func SyncCards() error {
 	if err != nil {
 		return err
 	}
+	client, err := brew.NewReader(cfg)
+	if err != nil {
+		return err
+	}
 
-	return CreateCollection(cfg.DB, collection)
+	return CreateCollection(cfg.DB, client, collection)
 }

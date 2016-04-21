@@ -8,6 +8,7 @@ import (
 	"stackmachine.com/vhost"
 
 	"github.com/kyleconroy/deckbrew/api"
+	"github.com/kyleconroy/deckbrew/brew"
 	"github.com/kyleconroy/deckbrew/config"
 	"github.com/kyleconroy/deckbrew/image"
 	"github.com/kyleconroy/deckbrew/web"
@@ -46,9 +47,17 @@ func Serve() error {
 		return err
 	}
 
+	// Make sure to keep around some idle connections
+	cfg.DB.DB.SetMaxIdleConns(10)
+
+	reader, err := brew.NewReader(cfg)
+	if err != nil {
+		return err
+	}
+
 	return http.ListenAndServe(":"+cfg.Port, vhost.Handler{
-		cfg.HostAPI:   api.New(cfg),
-		cfg.HostWeb:   web.New(cfg),
+		cfg.HostAPI:   api.New(cfg, reader),
+		cfg.HostWeb:   web.New(cfg, reader),
 		cfg.HostImage: image.New(),
 	})
 }

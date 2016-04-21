@@ -7,11 +7,10 @@ import (
 	"net/url"
 	"strconv"
 
-	"stackmachine.com/cql"
-
 	"golang.org/x/net/context"
 
 	"github.com/kyleconroy/deckbrew/api"
+	"github.com/kyleconroy/deckbrew/brew"
 	"github.com/kyleconroy/deckbrew/config"
 	_ "github.com/lib/pq"
 
@@ -37,13 +36,13 @@ const tmpl = `
 `
 
 type Web struct {
-	db *cql.DB
-	t  *template.Template
+	r brew.Reader
+	t *template.Template
 }
 
 type CardPage struct {
-	Card    api.Card
-	Edition api.Edition
+	Card    brew.Card
+	Edition brew.Edition
 }
 
 func (web *Web) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -59,14 +58,10 @@ func (web *Web) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	cards, err := api.FetchCards(ctx, web.db, cond, 0)
+	cards, err := web.r.GetCards(ctx, cond, 0)
 	if err != nil {
 		http.Error(w, "Error", http.StatusInternalServerError)
 		return
-	}
-
-	for i, _ := range cards {
-		cards[i].Fill()
 	}
 
 	if len(cards) == 0 {
@@ -87,14 +82,16 @@ func (web *Web) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 }
 
-func New(cfg *config.Config) http.Handler {
+func New(cfg *config.Config, r brew.Reader) http.Handler {
 	mux := goji.NewMux()
+
 	app := Web{
-		db: cfg.DB,
-		t:  template.Must(template.New("card").Parse(tmpl)),
+		r: r,
+		t: template.Must(template.New("card").Parse(tmpl)),
 	}
 
 	// Setup middleware
+	mux.UseC(api.Recover)
 	mux.UseC(api.Tracing)
 
 	mux.HandleFuncC(pat.Get("/mtg/cards/:id"), app.HandleCard)

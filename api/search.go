@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/kyleconroy/deckbrew/brew"
 )
 
 func toUpper(strs []string) []string {
@@ -24,12 +26,12 @@ func toLower(strs []string) []string {
 }
 
 type Search struct {
-	Conditions []Condition
+	Conditions []brew.Condition
 	Args       url.Values
 }
 
 func (s *Search) extractPattern(searchTerm, key string) error {
-	or := []Condition{}
+	or := []brew.Condition{}
 
 	for _, oracle := range s.Args[key] {
 		if oracle == "" {
@@ -38,11 +40,11 @@ func (s *Search) extractPattern(searchTerm, key string) error {
 		if strings.ContainsAny(oracle, "%_") {
 			return fmt.Errorf("Search string can't contain '%%' or '_'")
 		}
-		or = append(or, ILike(searchTerm, "%"+oracle+"%"))
+		or = append(or, brew.ILike(searchTerm, "%"+oracle+"%"))
 	}
 
 	if len(or) > 0 {
-		s.Conditions = append(s.Conditions, Or(or...))
+		s.Conditions = append(s.Conditions, brew.Or(or...))
 	}
 
 	return nil
@@ -66,9 +68,9 @@ func (s *Search) addQuery(key string, items []string) error {
 	}
 
 	if len(items) == 1 {
-		s.Conditions = append(s.Conditions, Contains(key, CreateStringArray(items)))
+		s.Conditions = append(s.Conditions, brew.Contains(key, CreateStringArray(items)))
 	} else {
-		s.Conditions = append(s.Conditions, Overlap(key, CreateStringArray(items)))
+		s.Conditions = append(s.Conditions, brew.Overlap(key, CreateStringArray(items)))
 	}
 
 	return nil
@@ -77,9 +79,9 @@ func (s *Search) addQuery(key string, items []string) error {
 func (s *Search) ParseMulticolor() error {
 	switch s.Args.Get("multicolor") {
 	case "true":
-		s.Conditions = append(s.Conditions, Eq("multicolor", "true"))
+		s.Conditions = append(s.Conditions, brew.Eq("multicolor", "true"))
 	case "false":
-		s.Conditions = append(s.Conditions, Eq("multicolor", "false"))
+		s.Conditions = append(s.Conditions, brew.Eq("multicolor", "false"))
 	case "":
 		return nil
 	default:
@@ -178,8 +180,8 @@ func (s *Search) ParseText() error {
 	return s.extractPattern("rules", "oracle")
 }
 
-func ParseSearch(u *url.URL) (Condition, error, []string) {
-	search := Search{Args: u.Query(), Conditions: []Condition{}}
+func ParseSearch(u *url.URL) (brew.Condition, error, []string) {
+	search := Search{Args: u.Query(), Conditions: []brew.Condition{}}
 
 	errs := []error{
 		search.ParseMulticolor(),
@@ -206,7 +208,7 @@ func ParseSearch(u *url.URL) (Condition, error, []string) {
 		}
 	}
 
-	return And(search.Conditions...), err, results
+	return brew.And(search.Conditions...), err, results
 }
 
 func CardsPaging(u *url.URL) (int, error) {

@@ -1,4 +1,4 @@
-package api
+package brew
 
 import (
 	"fmt"
@@ -183,35 +183,6 @@ func (e Expression) ToSql() (string, []interface{}, error) {
 	sql = fmt.Sprintf(sql, counts...)
 
 	return sql, params, nil
-}
-
-// This doesn't match Select at all
-func Insert(columns []string, table string) string {
-	values := []string{}
-
-	for i := range columns {
-		values = append(values, "$"+strconv.Itoa(i+1))
-	}
-
-	c := strings.Join(columns, ",")
-	v := strings.Join(values, ",")
-
-	return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, c, v)
-}
-
-func Update(columns []string, table string) string {
-	values := []string{}
-	last := 0
-
-	for i := range columns {
-		values = append(values, "$"+strconv.Itoa(i+1))
-		last = i + 1
-	}
-
-	c := strings.Join(columns, ",")
-	v := strings.Join(values, ",")
-
-	return fmt.Sprintf("UPDATE %s SET (%s) = (%s) WHERE id = $%d", table, c, v, last+1)
 }
 
 func Select(fields ...string) Expression {

@@ -1,20 +1,17 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"stackmachine.com/cql"
-
 	"golang.org/x/net/context"
 
+	"github.com/kyleconroy/deckbrew/brew"
 	"github.com/kyleconroy/deckbrew/config"
 	_ "github.com/lib/pq"
 
@@ -23,205 +20,10 @@ import (
 )
 
 // XXX: Use the config instead
-func apiBase() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3000"
-	}
-	host := os.Getenv("DECKBREW_API_HOST")
-	if host == "" {
-		host = "deckbrew.api:" + port
-	}
-	if strings.Contains(host, ":") {
-		return "http://" + host
-	} else {
-		return "https://" + host
-	}
-}
-
-func imageBase() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3000"
-	}
-	host := os.Getenv("DECKBREW_IMAGE_HOST")
-	if host == "" {
-		host = "deckbrew.image:" + port
-	}
-	if strings.Contains(host, ":") {
-		return "http://" + host
-	} else {
-		return "https://" + host
-	}
-}
-
-func webBase() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3000"
-	}
-	host := os.Getenv("DECKBREW_WEB_HOST")
-	if host == "" {
-		host = "deckbrew.web:" + port
-	}
-	if strings.Contains(host, ":") {
-		return "http://" + host
-	} else {
-		return "https://" + host
-	}
-}
-
-func ReverseCard(id string) string {
-	return fmt.Sprintf("%s/mtg/cards/%s", apiBase(), id)
-}
-
-func ReverseEdition(id int) string {
-	return fmt.Sprintf("%s/mtg/cards?multiverseid=%d", apiBase(), id)
-}
-
-func ReverseSet(id string) string {
-	return fmt.Sprintf("%s/mtg/sets/%s", apiBase(), id)
-}
-
-func MTGImageURL(id int) string {
-	return fmt.Sprintf("%s/mtg/multiverseid/%d.jpg", imageBase(), id)
-}
-
-func DeckbrewURL(id int) string {
-	return fmt.Sprintf("%s/mtg/cards/%d", webBase(), id)
-}
-
 func Slug(name string) string {
 	re := regexp.MustCompile(`[,.'"?:()]`)
 	d := strings.Replace(strings.ToLower(name), " ", "-", -1)
 	return re.ReplaceAllLiteralString(d, "")
-}
-
-// Import this eventually
-type Card struct {
-	Name          string            `json:"name"`
-	Id            string            `json:"id"`
-	Href          string            `json:"url,omitempty"`
-	StoreUrl      string            `json:"store_url"`
-	Types         []string          `json:"types,omitempty"`
-	Supertypes    []string          `json:"supertypes,omitempty"`
-	Subtypes      []string          `json:"subtypes,omitempty"`
-	Colors        []string          `json:"colors,omitempty"`
-	ConvertedCost int               `json:"cmc"`
-	ManaCost      string            `json:"cost"`
-	Text          string            `json:"text"`
-	Power         string            `json:"power,omitempty"`
-	Toughness     string            `json:"toughness,omitempty"`
-	Loyalty       int               `json:"loyalty,omitempty"`
-	FormatMap     map[string]string `json:"formats"`
-	Editions      []Edition         `json:"editions,omitempty"`
-}
-
-func (c *Card) Sets() []string {
-	sets := []string{}
-	for _, e := range c.Editions {
-		sets = append(sets, e.SetId)
-	}
-	return ToUniqueLower(sets)
-}
-
-func (c *Card) Formats() []string {
-	v := []string{}
-	for format, status := range c.FormatMap {
-		if status == "legal" || status == "restricted" {
-			v = append(v, format)
-		}
-	}
-	return ToUniqueLower(v)
-}
-
-func (c *Card) Status() []string {
-	v := []string{}
-	for _, status := range c.FormatMap {
-		v = append(v, status)
-	}
-	return ToUniqueLower(v)
-}
-
-func (c *Card) Rarities() []string {
-	r := []string{}
-	for _, e := range c.Editions {
-		r = append(r, e.Rarity)
-	}
-	return ToUniqueLower(r)
-}
-
-func (c *Card) MultiverseIds() []string {
-	r := []string{}
-	for _, e := range c.Editions {
-		r = append(r, strconv.Itoa(e.MultiverseId))
-	}
-	return ToUniqueLower(r)
-}
-
-func (c *Card) Multicolor() bool {
-	return len(c.Colors) > 1
-}
-
-func (c *Card) Fill() {
-	c.Href = ReverseCard(c.Id)
-	c.StoreUrl = TCGCardURL(c)
-
-	for i, _ := range c.Editions {
-		e := &c.Editions[i]
-		e.Href = ReverseEdition(e.MultiverseId)
-		e.SetUrl = ReverseSet(e.SetId)
-		e.ImageUrl = MTGImageURL(e.MultiverseId)
-		e.HTMLUrl = DeckbrewURL(e.MultiverseId)
-		e.StoreUrl = TCGEditionURL(c, e)
-		e.Price = &Price{
-			Low:     0,
-			Average: 0,
-			High:    0,
-		}
-	}
-}
-
-type Edition struct {
-	Set          string `json:"set"`
-	SetId        string `json:"set_id"`
-	CardId       string `json:"-"`
-	Watermark    string `json:"watermark,omitempty"`
-	Rarity       string `json:"rarity"`
-	Border       string `json:"-"`
-	Artist       string `json:"artist"`
-	MultiverseId int    `json:"multiverse_id"`
-	Flavor       string `json:"flavor,omitempty"`
-	Number       string `json:"number"`
-	Layout       string `json:"layout"`
-	Price        *Price `json:"price,omitempty"`
-	Href         string `json:"url,omitempty"`
-	ImageUrl     string `json:"image_url,omitempty"`
-	SetUrl       string `json:"set_url,omitempty"`
-	StoreUrl     string `json:"store_url"`
-	HTMLUrl      string `json:"html_url"`
-}
-
-type Price struct {
-	Low     int `json:"low"`
-	Average int `json:"median"`
-	High    int `json:"high"`
-}
-
-type Set struct {
-	Id         string `json:"id"`
-	Name       string `json:"name"`
-	Border     string `json:"border"`
-	Type       string `json:"type"`
-	Href       string `json:"url"`
-	CardsUrl   string `json:"cards_url"`
-	PriceGuide string `json:"-"`
-	Priced     bool   `json:"-"`
-}
-
-func (s *Set) Fill() {
-	s.Href = fmt.Sprintf("%s/mtg/sets/%s", apiBase(), s.Id)
-	s.CardsUrl = fmt.Sprintf("%s/mtg/cards?set=%s", apiBase(), s.Id)
 }
 
 func JSON(w http.ResponseWriter, code int, val interface{}) {
@@ -263,7 +65,16 @@ type ApiError struct {
 }
 
 type API struct {
-	db *cql.DB
+	c    brew.Reader
+	host string
+}
+
+func (a *API) apiBase() string {
+	if strings.Contains(a.host, ":") {
+		return "http://" + a.host
+	} else {
+		return "https://" + a.host
+	}
 }
 
 func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -277,48 +88,39 @@ func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Re
 		JSON(w, http.StatusBadRequest, Errors(errors...))
 		return
 	}
-	cards, err := FetchCards(ctx, a.db, cond, page)
+	cards, err := a.c.GetCards(ctx, cond, page)
 	if err != nil {
-		JSON(w, http.StatusNotFound, Errors("Cards not found"))
+		JSON(w, http.StatusInternalServerError, Errors("Error fetching cards"))
 		return
 	}
-
-	for i, _ := range cards {
-		cards[i].Fill()
-	}
-
-	w.Header().Set("Link", LinkHeader(apiBase(), r.URL, page))
+	w.Header().Set("Link", LinkHeader(a.apiBase(), r.URL, page))
 	JSON(w, http.StatusOK, cards)
 }
 
 func (a *API) HandleRandomCard(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	var card string
-	err := a.db.QueryRow("SELECT id FROM cards ORDER BY RANDOM() LIMIT 1").Scan(&card)
+	id, err := a.c.GetRandomCardID(ctx)
 	switch {
-	case err == sql.ErrNoRows:
+	case id == "":
 		JSON(w, http.StatusNotFound, Errors("No random card can be found"))
 	case err != nil:
 		JSON(w, http.StatusInternalServerError, Errors("Can't connect to database"))
 	default:
-		http.Redirect(w, r, "/mtg/cards/"+card, http.StatusFound)
-		JSON(w, http.StatusFound, []string{"Redirecting to /mtg/cards/" + card})
+		http.Redirect(w, r, "/mtg/cards/"+id, http.StatusFound)
+		JSON(w, http.StatusFound, []string{"Redirecting to /mtg/cards/" + id})
 	}
 }
 
 func (a *API) HandleCard(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	card, err := FetchCard(ctx, a.db, pat.Param(ctx, "id"))
+	card, err := a.c.GetCard(ctx, pat.Param(ctx, "id"))
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors("Card not found"))
 		return
 	}
-
-	card.Fill()
-
 	JSON(w, http.StatusOK, card)
 }
 
 func (a *API) HandleSets(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	sets, err := FetchSets(ctx, a.db)
+	sets, err := a.c.GetSets(ctx)
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors("Sets not found"))
 	} else {
@@ -327,7 +129,7 @@ func (a *API) HandleSets(ctx context.Context, w http.ResponseWriter, r *http.Req
 }
 
 func (a *API) HandleSet(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	card, err := FetchSet(ctx, a.db, pat.Param(ctx, "id"))
+	card, err := a.c.GetSet(ctx, pat.Param(ctx, "id"))
 
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors("Set not found"))
@@ -336,11 +138,11 @@ func (a *API) HandleSet(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (a *API) HandleTerm(term string) func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleTerm(f func(context.Context) ([]string, error)) func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		terms, err := FetchTerms(ctx, a.db, term)
+		terms, err := f(ctx)
 		if err != nil {
-			JSON(w, http.StatusNotFound, Errors(term+" not found"))
+			JSON(w, http.StatusNotFound, Errors("no strings found"))
 		} else {
 			JSON(w, http.StatusOK, terms)
 		}
@@ -348,16 +150,11 @@ func (a *API) HandleTerm(term string) func(ctx context.Context, w http.ResponseW
 }
 
 func (a *API) HandleTypeahead(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	cards, err := FetchTypeahead(ctx, a.db, r.URL.Query().Get("q"))
+	cards, err := a.c.GetCardsByName(ctx, r.URL.Query().Get("q"))
 	if err != nil {
 		JSON(w, http.StatusNotFound, Errors(" Can't find any cards that match that search"))
 		return
 	}
-
-	for i, _ := range cards {
-		cards[i].Fill()
-	}
-
 	JSON(w, http.StatusOK, cards)
 }
 
@@ -365,11 +162,15 @@ func NotFound(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusNotFound, Errors("No endpoint here"))
 }
 
-func New(cfg *config.Config) http.Handler {
+type term int
+
+func New(cfg *config.Config, client brew.Reader) http.Handler {
+	app := API{c: client, host: cfg.HostAPI}
+
 	mux := goji.NewMux()
-	app := API{db: cfg.DB}
 
 	// Setup middleware
+	mux.UseC(Recover)
 	mux.UseC(Tracing)
 	mux.UseC(Headers)
 
@@ -379,10 +180,10 @@ func New(cfg *config.Config) http.Handler {
 	mux.HandleFuncC(pat.Get("/mtg/cards/:id"), app.HandleCard)
 	mux.HandleFuncC(pat.Get("/mtg/sets"), app.HandleSets)
 	mux.HandleFuncC(pat.Get("/mtg/sets/:id"), app.HandleSet)
-	mux.HandleFuncC(pat.Get("/mtg/colors"), app.HandleTerm("colors"))
-	mux.HandleFuncC(pat.Get("/mtg/supertypes"), app.HandleTerm("supertypes"))
-	mux.HandleFuncC(pat.Get("/mtg/subtypes"), app.HandleTerm("subtypes"))
-	mux.HandleFuncC(pat.Get("/mtg/types"), app.HandleTerm("types"))
+	mux.HandleFuncC(pat.Get("/mtg/colors"), app.HandleTerm(client.GetColors))
+	mux.HandleFuncC(pat.Get("/mtg/supertypes"), app.HandleTerm(client.GetSupertypes))
+	mux.HandleFuncC(pat.Get("/mtg/subtypes"), app.HandleTerm(client.GetSubtypes))
+	mux.HandleFuncC(pat.Get("/mtg/types"), app.HandleTerm(client.GetTypes))
 
 	return mux
 }
