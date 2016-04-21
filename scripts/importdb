@@ -1,0 +1,7 @@
+#!/bin/bash
+set -ex
+
+dropdb --if-exists deckbrew
+createdb deckbrew
+curl -o latest.dump `heroku pg:backups public-url`
+pg_restore --verbose --clean --no-acl --no-owner -h localhost -U $USER -d deckbrew latest.dump
