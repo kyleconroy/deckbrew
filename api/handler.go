@@ -106,7 +106,7 @@ func (a *API) HandleRandomCard(ctx context.Context, w http.ResponseWriter, r *ht
 		JSON(w, http.StatusInternalServerError, Errors("Can't connect to database"))
 	default:
 		http.Redirect(w, r, "/mtg/cards/"+id, http.StatusFound)
-		JSON(w, http.StatusFound, []string{"Redirecting to /mtg/cards/" + id})
+		fmt.Fprintf(w, "[Redirecting to /mtg/cards/golden-wish]")
 	}
 }
 

@@ -8,6 +8,9 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/kyleconroy/deckbrew/brew"
+	"github.com/kyleconroy/deckbrew/config"
 )
 
 func TestLinkHeader(t *testing.T) {
@@ -38,15 +41,17 @@ func TestSlug(t *testing.T) {
 }
 
 func TestApi(t *testing.T) {
-	db, err := getDatabase()
+	cfg, err := config.FromEnv()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	m, err := NewAPI(db)
+	reader, err := brew.NewReader(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	m := New(cfg, reader)
 
 	ts := httptest.NewServer(m)
 	defer ts.Close()
@@ -73,8 +78,8 @@ func TestApi(t *testing.T) {
 	}
 
 	for _, url := range urls {
-
 		res, err := http.Get(ts.URL + url)
+		res.Body.Close()
 
 		if err != nil {
 			t.Error(err)
@@ -87,7 +92,7 @@ func TestApi(t *testing.T) {
 
 	// Test Random
 	res, err := http.Get(ts.URL + "/mtg/cards/random")
-
+	res.Body.Close()
 	if err != nil {
 		t.Error(err)
 	}
@@ -96,8 +101,8 @@ func TestApi(t *testing.T) {
 		t.Errorf("Expected /mtg/cards/random redirect to a new page")
 	}
 
-	loadFirstCard := func(u string) (Card, error) {
-		var card Card
+	loadFirstCard := func(u string) (brew.Card, error) {
+		var card brew.Card
 
 		res, err := http.Get(ts.URL + u)
 		defer res.Body.Close()
@@ -116,7 +121,7 @@ func TestApi(t *testing.T) {
 			return card, err
 		}
 
-		var cards []Card
+		var cards []brew.Card
 
 		err = json.Unmarshal(blob, &cards)
 

@@ -5,7 +5,7 @@ import (
 )
 
 func TestLoadCardJSON(t *testing.T) {
-	collection, err := LoadCollection("cards.json")
+	collection, err := LoadCollection("../cards.json")
 
 	if err != nil {
 		t.Fatal(err)
