@@ -83,19 +83,12 @@ func (a *API) HandleCards(ctx context.Context, w http.ResponseWriter, r *http.Re
 		JSON(w, http.StatusBadRequest, Errors(errors...))
 		return
 	}
-	page, err := CardsPaging(r.URL)
-	if err != nil {
-		JSON(w, http.StatusBadRequest, Errors(errors...))
-		return
-	}
-	s.Limit = 100
-	s.Offset = page * s.Limit
 	cards, err := a.c.GetCards(ctx, s)
 	if err != nil {
 		JSON(w, http.StatusInternalServerError, Errors("Error fetching cards"))
 		return
 	}
-	w.Header().Set("Link", LinkHeader(a.apiBase(), r.URL, page))
+	w.Header().Set("Link", LinkHeader(a.apiBase(), r.URL, s.Page))
 	JSON(w, http.StatusOK, cards)
 }
 

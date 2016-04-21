@@ -50,6 +50,7 @@ type Search struct {
 	Types             []string
 	Limit             int
 	Offset            int
+	Page              int
 }
 
 type Card struct {

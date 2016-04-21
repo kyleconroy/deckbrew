@@ -43,7 +43,7 @@ func extractStrings(args url.Values, key string, allowed map[string]bool) ([]str
 	return items, nil
 }
 
-func ParseMulticolor(s *brew.Search, args url.Values) error {
+func parseMulticolor(s *brew.Search, args url.Values) error {
 	switch args.Get("multicolor") {
 	case "true":
 		s.IncludeMulticolor = true
@@ -60,7 +60,7 @@ func ParseMulticolor(s *brew.Search, args url.Values) error {
 	return nil
 }
 
-func ParseMultiverseIDs(s *brew.Search, args url.Values) error {
+func parseMultiverseIDs(s *brew.Search, args url.Values) error {
 	ids := args["multiverseid"][:]
 	for _, m := range args["m"] {
 		ids = append(ids, m)
@@ -69,7 +69,7 @@ func ParseMultiverseIDs(s *brew.Search, args url.Values) error {
 	return nil
 }
 
-func ParseSupertypes(s *brew.Search, args url.Values) (err error) {
+func parseSupertypes(s *brew.Search, args url.Values) (err error) {
 	s.Supertypes, err = extractStrings(args, "supertype", map[string]bool{
 		"legendary": true,
 		"basic":     true,
@@ -81,18 +81,18 @@ func ParseSupertypes(s *brew.Search, args url.Values) (err error) {
 }
 
 // TODO: Add validation
-func ParseSubtypes(s *brew.Search, args url.Values) error {
+func parseSubtypes(s *brew.Search, args url.Values) error {
 	s.Subtypes = toLower(args["subtype"])
 	return nil
 }
 
 // TODO: Add validation
-func ParseSets(s *brew.Search, args url.Values) error {
+func parseSets(s *brew.Search, args url.Values) error {
 	s.Sets = toLower(args["set"])
 	return nil
 }
 
-func ParseColors(s *brew.Search, args url.Values) (err error) {
+func parseColors(s *brew.Search, args url.Values) (err error) {
 	s.Colors, err = extractStrings(args, "color", map[string]bool{
 		"red":   true,
 		"black": true,
@@ -103,7 +103,7 @@ func ParseColors(s *brew.Search, args url.Values) (err error) {
 	return
 }
 
-func ParseStatus(s *brew.Search, args url.Values) (err error) {
+func parseStatus(s *brew.Search, args url.Values) (err error) {
 	s.Status, err = extractStrings(args, "status", map[string]bool{
 		"legal":      true,
 		"banned":     true,
@@ -112,7 +112,7 @@ func ParseStatus(s *brew.Search, args url.Values) (err error) {
 	return
 }
 
-func ParseFormat(s *brew.Search, args url.Values) (err error) {
+func parseFormat(s *brew.Search, args url.Values) (err error) {
 	s.Formats, err = extractStrings(args, "format", map[string]bool{
 		"commander": true,
 		"standard":  true,
@@ -122,7 +122,8 @@ func ParseFormat(s *brew.Search, args url.Values) (err error) {
 	})
 	return
 }
-func ParseRarity(s *brew.Search, args url.Values) (err error) {
+
+func parseRarity(s *brew.Search, args url.Values) (err error) {
 	s.Rarities, err = extractStrings(args, "rarity", map[string]bool{
 		"common":   true,
 		"uncommon": true,
@@ -134,7 +135,7 @@ func ParseRarity(s *brew.Search, args url.Values) (err error) {
 	return
 }
 
-func ParseTypes(s *brew.Search, args url.Values) (err error) {
+func parseTypes(s *brew.Search, args url.Values) (err error) {
 	s.Types, err = extractStrings(args, "type", map[string]bool{
 		"creature":     true,
 		"land":         true,
@@ -153,14 +154,37 @@ func ParseTypes(s *brew.Search, args url.Values) (err error) {
 	return
 }
 
-func ParseName(s *brew.Search, args url.Values) (err error) {
+func parseName(s *brew.Search, args url.Values) (err error) {
 	s.Names, err = extractPattern(args, "name")
 	return
 }
 
-func ParseRules(s *brew.Search, args url.Values) (err error) {
+func parseRules(s *brew.Search, args url.Values) (err error) {
 	s.Rules, err = extractPattern(args, "oracle")
 	return
+}
+
+func parsePaging(s *brew.Search, args url.Values) error {
+	s.Limit = 100
+
+	pagenum := args.Get("page")
+	if pagenum == "" {
+		return nil
+	}
+
+	page, err := strconv.Atoi(pagenum)
+	if err != nil {
+		return err
+	}
+
+	if page < 0 {
+		return fmt.Errorf("Page parameter must be >= 0")
+	}
+
+	s.Page = page
+	s.Offset = s.Page * s.Limit
+
+	return nil
 }
 
 func ParseSearch(u *url.URL) (brew.Search, error, []string) {
@@ -168,18 +192,19 @@ func ParseSearch(u *url.URL) (brew.Search, error, []string) {
 	search := brew.Search{}
 
 	funcs := []func(*brew.Search, url.Values) error{
-		ParseMulticolor,
-		ParseRarity,
-		ParseTypes,
-		ParseSupertypes,
-		ParseColors,
-		ParseSubtypes,
-		ParseFormat,
-		ParseStatus,
-		ParseMultiverseIDs,
-		ParseSets,
-		ParseName,
-		ParseRules,
+		parseMulticolor,
+		parseRarity,
+		parseTypes,
+		parseSupertypes,
+		parseColors,
+		parseSubtypes,
+		parseFormat,
+		parseStatus,
+		parseMultiverseIDs,
+		parseSets,
+		parseName,
+		parseRules,
+		parsePaging,
 	}
 
 	var err error
@@ -196,24 +221,4 @@ func ParseSearch(u *url.URL) (brew.Search, error, []string) {
 	search.Limit = 100
 
 	return search, err, results
-}
-
-func CardsPaging(u *url.URL) (int, error) {
-	pagenum := u.Query().Get("page")
-
-	if pagenum == "" {
-		return 0, nil
-	}
-
-	page, err := strconv.Atoi(pagenum)
-
-	if err != nil {
-		return 0, err
-	}
-
-	if page < 0 {
-		return 0, fmt.Errorf("Page parameter must be >= 0")
-	}
-
-	return page, nil
 }
