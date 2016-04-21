@@ -128,22 +128,21 @@ func TransformCollection(collection MTGCollection) ([]brew.Set, []brew.Card) {
 	return sets, cards
 }
 
-func TransformLegalities(lgs MTGLegalities) map[string]string {
+func TransformLegalities(lgs []MTGLegality) map[string]string {
 	formats := map[string]string{}
-	if lgs.Standard != "" {
-		formats["standard"] = strings.ToLower(lgs.Standard)
-	}
-	if lgs.Modern != "" {
-		formats["modern"] = strings.ToLower(lgs.Modern)
-	}
-	if lgs.Legacy != "" {
-		formats["legacy"] = strings.ToLower(lgs.Legacy)
-	}
-	if lgs.Vintage != "" {
-		formats["vintage"] = strings.ToLower(lgs.Vintage)
-	}
-	if lgs.Commander != "" {
-		formats["commander"] = strings.ToLower(lgs.Commander)
+	for _, l := range lgs {
+		switch l.Format {
+		case "Standard":
+			formats["standard"] = strings.ToLower(l.Legality)
+		case "Modern":
+			formats["modern"] = strings.ToLower(l.Legality)
+		case "Vintage":
+			formats["vintage"] = strings.ToLower(l.Legality)
+		case "Legacy":
+			formats["legacy"] = strings.ToLower(l.Legality)
+		case "Commander":
+			formats["commander"] = strings.ToLower(l.Legality)
+		}
 	}
 	return formats
 }

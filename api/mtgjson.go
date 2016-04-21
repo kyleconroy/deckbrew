@@ -16,12 +16,9 @@ type MTGSet struct {
 	Cards    []MTGCard `json:"cards"`
 }
 
-type MTGLegalities struct {
-	Modern    string
-	Standard  string
-	Vintage   string
-	Legacy    string
-	Commander string
+type MTGLegality struct {
+	Format   string `json:"format"`
+	Legality string `json:"legality"`
 }
 
 type MTGCard struct {
@@ -34,7 +31,7 @@ type MTGCard struct {
 	Layout        string        `json:"layout"`
 	LifeModifier  int           `json:"life"`
 	Loyalty       int           `json:"loyalty"`
-	Legalities    MTGLegalities `json:"legalities"`
+	Legalities    []MTGLegality `json:"legalities"`
 	ManaCost      string        `json:"manaCost"`
 	MultiverseId  int           `json:"multiverseid"`
 	Name          string        `json:"name"`
