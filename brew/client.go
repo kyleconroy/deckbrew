@@ -238,6 +238,7 @@ func (c *client) GetCard(ctx context.Context, id string) (Card, error) {
 	if err != nil {
 		return card, err
 	}
+	card.Fill(c.router)
 	return card, json.Unmarshal(blob, &card)
 }
 
