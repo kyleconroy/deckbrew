@@ -238,8 +238,11 @@ func (c *client) GetCard(ctx context.Context, id string) (Card, error) {
 	if err != nil {
 		return card, err
 	}
+	if err := json.Unmarshal(blob, &card); err != nil {
+		return card, err
+	}
 	card.Fill(c.router)
-	return card, json.Unmarshal(blob, &card)
+	return card, nil
 }
 
 func (c *client) fetchTerms(ctx context.Context, stmt *cql.Stmt) ([]string, error) {
