@@ -26,7 +26,7 @@ func extractPattern(args url.Values, key string) ([]string, error) {
 		if strings.ContainsAny(oracle, "%_") {
 			return items, fmt.Errorf("Search string can't contain '%%' or '_'")
 		}
-		items = append(items, "%"+oracle+"%")
+		items = append(items, "\"%"+strings.Replace(oracle, "\"", "", -1)+"%\"")
 	}
 	return items, nil
 }
