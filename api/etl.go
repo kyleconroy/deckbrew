@@ -245,9 +245,6 @@ func CreateCollection(db *cql.DB, r brew.Reader, collection MTGCollection) error
 
 	i := 0
 	for _, c := range cards {
-		if i >= 1000 {
-			log.Println("Added 1000 cards to the database")
-		}
 		blob, err := json.Marshal(c)
 		if err != nil {
 			tx.Rollback()

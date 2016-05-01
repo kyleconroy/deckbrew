@@ -1,5 +1,8 @@
 # Deckbrew: A Magic: The Gathering API
 
+[![Build Status](https://travis-ci.org/kyleconroy/deckbrew.svg?branch=travis)](https://travis-ci.org/kyleconroy/deckbrew)
+[![godoc Reference](https://godoc.org/github.com/kyleconroy/deckbrew?status.png)](https://godoc.org/github.com/kyleconroy/deckbrew)
+
 ## Running Yourself
 
 Deckbrew requires an existing Postgres database, accessible using DATABASE_URL.
