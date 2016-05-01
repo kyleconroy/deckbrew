@@ -2,3 +2,9 @@ language: go
 go:
   - 1.6
 services: postgresql
+install:
+  - go build
+test:
+  - ./deckbrew migrate
+  - ./deckbrew sync
+  - go test -v ./...
