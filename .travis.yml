@@ -2,11 +2,11 @@ language: go
 go:
   - 1.6
 services: postgresql
-before_script:
-  - psql -c 'create database deckbrewtest;' -U postgres
 install:
   - go build
-test:
+before_script:
+  - psql -c 'create database deckbrewtest;' -U postgres
   - ./deckbrew migrate
   - ./deckbrew sync
-  - go test -v ./...
+script:
+  - ./scripts/test
