@@ -19,17 +19,6 @@ func NewSingleHostReverseProxy() *httputil.ReverseProxy {
 			id = matches[1]
 		}
 
-		// Gatherer is confused about Westvale Abbey and Ormendahl, Profane
-		// Prince. For now, we switch the images to make everything line up. My
-		// guess is that mtgjson will eventually fix this, and then I'll need
-		// to remove this hack
-		switch id {
-		case "410049":
-			id = "410050"
-		case "410050":
-			id = "410049"
-		}
-
 		req.URL.Scheme = "http"
 		req.URL.Host = "gatherer.wizards.com"
 		req.URL.Path = "/Handlers/Image.ashx"
