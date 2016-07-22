@@ -39,14 +39,14 @@ into your application. It's free to use with no sign-up required.</p>
 <li><a href="https://play.google.com/store/apps/details?id=com.zach.wilson.magic.app">Magic Card Viewer and Pricer by Zachary Wilson</a></li>
 <li><a href="http://www.mtgne.com/">MTG PriceFinder by Ken Briscoe</a></li>
 </ul>
-<h3>Pagination</h3>
+<h3 id="pagination">Pagination</h3>
 <p>Requests that return multiple items will be paginated to 100 items by default.
 You can specify further pages with the <code>?page</code> parameter.</p>
 <div class="highlight"><pre><code class="language-text" data-lang="text">$ curl https://api.deckbrew.com/mtg/cards?page=2
 </code></pre></div>
 <p>Note that page numbering is 0-based and that omitting the <code>?page</code> parameter
 will return the first page.</p>
-<h4>Link Header</h4>
+<h4 id="link-header">Link Header</h4>
 <p>The pagination info is included in the Link header. It is important to follow
 these Link header values instead of constructing your own URLs.</p>
 <div class="highlight"><pre><code class="language-text" data-lang="text">Link: &lt;https://api.deckbrew.com/mtg/cards?page=3&gt;; rel="next",
@@ -68,7 +68,7 @@ these Link header values instead of constructing your own URLs.</p>
 <td>Shows the URL of the immediate previous page of results.</td>
 </tr>
 </tbody></table>
-<h3>Errors</h3>
+<h3 id="errors">Errors</h3>
 <p>Any response with a status code greater than or equal to 400 is considered an
 error. An error object will be returned with an <code>errors</code> key pointing to a list
 of errors for a given request.</p>
